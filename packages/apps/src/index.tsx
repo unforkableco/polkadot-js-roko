@@ -16,6 +16,13 @@ import Root from './Root.js';
 const rootId = 'root';
 const rootElement = document.getElementById(rootId);
 
+const defaultRpc = process.env.WS_URL || 'wss://your.default.rpc';
+
+// Check if localStorage already has a selected endpoint
+if (!window.localStorage.getItem('polkadot-apps-endpoint')) {
+  window.localStorage.setItem('polkadot-apps-endpoint', defaultRpc);
+}
+
 if (!rootElement) {
   throw new Error(`Unable to find element with id '${rootId}'`);
 }
