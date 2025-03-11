@@ -67,40 +67,13 @@ jobs:
         # Redirect stdout and stderr to a log file
         exec 1> >(logger -s -t $(basename $0)) 2>&1
         
-        # Install required packages first
-        echo "Installing required packages..."
-        apt-get update
-        apt-get install -y unzip curl
-        
-        # Install/Update AWS CLI
+        # Download the release artifact
+        echo "Downloading release artifact..."
         cd /tmp
-        echo "Installing/Updating AWS CLI..."
-        if ! curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; then
-          echo "Failed to download AWS CLI"
+        if ! curl -L -o polkadotjs-ui.tar.gz "https://github.com/${{ github.repository }}/releases/download/${{ inputs.release_version }}/polkadotjs-ui.tar.gz"; then
+          echo "Failed to download release artifact"
           exit 1
         fi
-        
-        if ! unzip -q awscliv2.zip; then
-          echo "Failed to unzip AWS CLI"
-          exit 1
-        fi
-        
-        # Check if AWS CLI is already installed and use appropriate install command
-        if [ -f "/usr/local/aws-cli/v2/current/dist/aws" ]; then
-          echo "AWS CLI already installed, updating..."
-          if ! ./aws/install --update; then
-            echo "Failed to update AWS CLI"
-            exit 1
-          fi
-        else
-          echo "Installing new AWS CLI..."
-          if ! ./aws/install; then
-            echo "Failed to install AWS CLI"
-            exit 1
-          fi
-        fi
-        
-        rm -rf aws awscliv2.zip
         
         # Set the WS_RPC_URL environment variable
         export WS_RPC_URL="${ws_rpc_url}"

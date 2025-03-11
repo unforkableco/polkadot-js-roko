@@ -7,20 +7,6 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Add error handling function
-handle_error() {
-    local exit_code=$?
-    log "ERROR: Command failed with exit code $exit_code"
-    if [ -f "/var/log/nginx/error.log" ]; then
-        log "Nginx error log:"
-        cat /var/log/nginx/error.log
-    fi
-    exit $exit_code
-}
-
-# Set up error handling
-trap 'handle_error' ERR
-
 # Add health check function
 check_health() {
     for i in {1..30}; do
@@ -79,7 +65,7 @@ if ! apt-get update; then
 fi
 
 # Install packages one by one to better handle failures
-for pkg in curl unzip nginx; do
+for pkg in curl nginx; do
     log "Installing $pkg..."
     if ! apt-get install -y $pkg; then
         log "ERROR: Failed to install $pkg"
@@ -87,83 +73,22 @@ for pkg in curl unzip nginx; do
     fi
 done
 
-# Install AWS CLI
-log "Installing/Updating AWS CLI..."
-cd /tmp
-if ! curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; then
-    log "ERROR: Failed to download AWS CLI"
-    exit 1
-fi
-
-if ! unzip -q awscliv2.zip; then
-    log "ERROR: Failed to unzip AWS CLI"
-    exit 1
-fi
-
-# Check if AWS CLI is already installed and use appropriate install command
-if [ -f "/usr/local/aws-cli/v2/current/dist/aws" ]; then
-    log "AWS CLI already installed, updating..."
-    if ! ./aws/install --update; then
-        log "ERROR: Failed to update AWS CLI"
-        exit 1
-    fi
-else
-    log "Installing new AWS CLI..."
-    if ! ./aws/install; then
-        log "ERROR: Failed to install AWS CLI"
-        exit 1
-    fi
-fi
-
-rm -rf aws awscliv2.zip
-
 # Create directory for the app
 log "Creating web root directory..."
 mkdir -p /var/www/polkadotjs
 
-# For local testing, use the artifact directly if it exists
+# Extract the application files
+log "Extracting application files..."
 if [ -f "/tmp/polkadotjs-ui.tar.gz" ]; then
-    log "Using local artifact..."
+    log "Using provided artifact..."
     cd /tmp
-    tar xzf polkadotjs-ui.tar.gz -C /var/www/polkadotjs
-else
-    # Get instance tags (only in AWS environment)
-    log "Getting instance metadata..."
-    if [ -f "/usr/local/bin/mock-metadata" ]; then
-        INSTANCE_ID=$(mock-metadata)
-        log "Using mock metadata: $INSTANCE_ID"
-    else
-        INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-        REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region)
-        log "Instance ID: $INSTANCE_ID, Region: $REGION"
-    fi
-    
-    log "Getting instance tags..."
-    TAG_VALUE=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=Version" --region ${REGION:-us-east-1} --query "Tags[0].Value" --output text)
-    REPO=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=Repository" --region ${REGION:-us-east-1} --query "Tags[0].Value" --output text)
-    
-    if [ "$TAG_VALUE" = "None" ] || [ "$REPO" = "None" ]; then
-        log "ERROR: Required tags not found"
-        exit 1
-    fi
-    
-    log "Version: $TAG_VALUE, Repository: $REPO"
-
-    # Download and extract the release
-    log "Downloading release artifact..."
-    cd /tmp
-    ARTIFACT_URL="https://github.com/${REPO}/releases/download/${TAG_VALUE}/polkadotjs-ui.tar.gz"
-    log "Downloading from: $ARTIFACT_URL"
-    if ! curl -L -o release.tar.gz "$ARTIFACT_URL"; then
-        log "ERROR: Failed to download release artifact"
-        exit 1
-    fi
-    
-    log "Extracting artifact..."
-    if ! tar xzf release.tar.gz -C /var/www/polkadotjs; then
+    if ! tar xzf polkadotjs-ui.tar.gz -C /var/www/polkadotjs; then
         log "ERROR: Failed to extract artifact"
         exit 1
     fi
+else
+    log "ERROR: Application artifact not found at /tmp/polkadotjs-ui.tar.gz"
+    exit 1
 fi
 
 # Configure environment
