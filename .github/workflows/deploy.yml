@@ -7,7 +7,7 @@ on:
         description: "Release version to deploy (e.g., v1.0.0)"
         required: true
       rpc_url:
-        description: "RPC URL"
+        description: "WS RPC URL"
         required: true
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
         echo 'set -e' >> scripts/setup_with_rpc.sh
         echo 'export DEBIAN_FRONTEND=noninteractive' >> scripts/setup_with_rpc.sh
         echo "WS_URL=\"${{ inputs.rpc_url }}\"" >> scripts/setup_with_rpc.sh
-        cat scripts/setup_polkadotjs.sh >> scripts/setup_with_rpc.sh  # Append actual setup script
+        cat scripts/setup_polkadotjs.sh >> scripts/setup_with_rpc.sh
 
     - name: Create AWS EC2 Instance for Polkadot.js Apps
       env:
@@ -63,4 +63,4 @@ jobs:
 
     - name: Output Polkadot.js URL
       run: |
-        echo "Polkadot.js Apps is now deployed at: http://$POLKADOTJS_PUBLIC_IP"
+        echo "🚀 Polkadot.js Apps is now deployed at: http://$POLKADOTJS_PUBLIC_IP"

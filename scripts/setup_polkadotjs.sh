@@ -7,11 +7,11 @@ export DEBIAN_FRONTEND=noninteractive
 GITHUB_REPO="unforkableco/polkadot-js"
 APP_DIR="/opt/polkadotjs"
 IMAGE_NAME="polkadotjs-app"
-# WS_URL passed by github action
+# WS_URL passed by GitHub Action
 
 # Ensure RPC URL is provided
 if [ -z "$WS_URL" ]; then
-  echo "❌ ERROR: RPC URL is required as the first argument!"
+  echo "❌ ERROR: RPC URL is required!"
   exit 1
 fi
 
@@ -33,8 +33,13 @@ sudo systemctl enable --now docker
 # Clone Polkadot.js Apps repository
 echo "⬇️ Cloning Polkadot.js Apps repository..."
 sudo mkdir -p $APP_DIR
-sudo chown ubuntu:ubuntu $APP_DIR
-git clone --depth 1 https://github.com/$GITHUB_REPO.git $APP_DIR || (cd $APP_DIR && git pull)
+sudo chown -R ubuntu:ubuntu $APP_DIR
+
+if [ ! -d "$APP_DIR/.git" ]; then
+  git clone --depth 1 https://github.com/$GITHUB_REPO.git $APP_DIR
+else
+  cd $APP_DIR && git pull
+fi
 
 # Move to project directory
 cd $APP_DIR
@@ -43,7 +48,7 @@ cd $APP_DIR
 echo "🐳 Building the Docker image..."
 sudo docker build -t $IMAGE_NAME -f docker/Dockerfile .
 
-# Stop and remove old container (if any)
+# Stop and remove old container (if exists)
 echo "🛑 Stopping old container (if exists)..."
 sudo docker stop $IMAGE_NAME || true
 sudo docker rm $IMAGE_NAME || true
