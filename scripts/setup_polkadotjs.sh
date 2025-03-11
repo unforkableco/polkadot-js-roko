@@ -88,7 +88,7 @@ for pkg in curl unzip nginx; do
 done
 
 # Install AWS CLI
-log "Installing AWS CLI..."
+log "Installing/Updating AWS CLI..."
 cd /tmp
 if ! curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; then
     log "ERROR: Failed to download AWS CLI"
@@ -100,9 +100,19 @@ if ! unzip -q awscliv2.zip; then
     exit 1
 fi
 
-if ! ./aws/install; then
-    log "ERROR: Failed to install AWS CLI"
-    exit 1
+# Check if AWS CLI is already installed and use appropriate install command
+if [ -f "/usr/local/aws-cli/v2/current/dist/aws" ]; then
+    log "AWS CLI already installed, updating..."
+    if ! ./aws/install --update; then
+        log "ERROR: Failed to update AWS CLI"
+        exit 1
+    fi
+else
+    log "Installing new AWS CLI..."
+    if ! ./aws/install; then
+        log "ERROR: Failed to install AWS CLI"
+        exit 1
+    fi
 fi
 
 rm -rf aws awscliv2.zip
