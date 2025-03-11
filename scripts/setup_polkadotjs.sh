@@ -1,77 +1,70 @@
 #!/bin/bash
+set -e
 
-set -e  # Exit immediately if any command fails
-export DEBIAN_FRONTEND=noninteractive
+# Update system and install dependencies
+apt-get update
+apt-get install -y nginx curl unzip
 
-# Variables
-GITHUB_REPO="unforkableco/polkadot-js"
-APP_DIR="/opt/polkadotjs"
-IMAGE_NAME="polkadotjs-app"
-# WS_URL passed by GitHub Action
+# Create directory for the app
+mkdir -p /var/www/polkadotjs
 
-# Ensure RPC URL is provided
-if [ -z "$WS_URL" ]; then
-  echo "❌ ERROR: RPC URL is required!"
-  exit 1
-fi
-
-echo "🚀 Starting Polkadot.js Apps Setup..."
-echo "🔗 Using RPC URL: $WS_URL"
-
-# Update system packages
-echo "🔄 Updating system packages..."
-sudo apt update && sudo apt upgrade -y
-
-# Install dependencies
-echo "📦 Installing dependencies..."
-sudo apt install -y docker.io git curl
-
-# Ensure Docker service is running
-echo "🐳 Ensuring Docker is running..."
-sudo systemctl enable --now docker
-
-# ⚡ Fix Memory Issues: Add Swap Space (1GB)
-echo "🛠 Adding Swap Space..."
-SWAPFILE="/swapfile"
-if [ ! -f "$SWAPFILE" ]; then
-  sudo fallocate -l 1G $SWAPFILE
-  sudo chmod 600 $SWAPFILE
-  sudo mkswap $SWAPFILE
-  sudo swapon $SWAPFILE
-  echo "$SWAPFILE none swap sw 0 0" | sudo tee -a /etc/fstab
-  echo "✅ Swap Space Added."
+# For local testing, use the artifact directly if it exists
+if [ -f "/tmp/polkadotjs-ui.tar.gz" ]; then
+    echo "Using local artifact..."
+    cd /tmp
+    tar xzf polkadotjs-ui.tar.gz -C /var/www/polkadotjs
 else
-  echo "✅ Swap Space already exists."
+    # Get instance tags (only in AWS environment)
+    if [ -f "/usr/local/bin/mock-metadata" ]; then
+        INSTANCE_ID=$(mock-metadata)
+    else
+        INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+        REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region)
+    fi
+    
+    TAG_VALUE=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=Version" --region ${REGION:-us-east-1} --query "Tags[0].Value" --output text)
+    REPO=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=Repository" --region ${REGION:-us-east-1} --query "Tags[0].Value" --output text)
+
+    # Download and extract the release
+    cd /tmp
+    curl -L -o release.tar.gz "https://github.com/${REPO}/releases/download/${TAG_VALUE}/polkadotjs-ui.tar.gz"
+    tar xzf release.tar.gz -C /var/www/polkadotjs
 fi
 
-# Clone Polkadot.js Apps repository
-echo "⬇️ Cloning Polkadot.js Apps repository..."
-sudo mkdir -p $APP_DIR
-sudo chown -R ubuntu:ubuntu $APP_DIR
+# Configure environment
+cat > /var/www/polkadotjs/env-config.js << EOL
+window.process_env = {
+  WS_URL: "${WS_RPC_URL:-wss://rpc.polkadot.io}"
+};
+EOL
 
-if [ ! -d "$APP_DIR/.git" ]; then
-  git clone --depth 1 https://github.com/$GITHUB_REPO.git $APP_DIR
-else
-  cd $APP_DIR && git pull
+# Configure Nginx
+cat > /etc/nginx/sites-available/polkadotjs << EOL
+server {
+    listen 80;
+    server_name _;
+    root /var/www/polkadotjs;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+    }
+
+    location /env-config.js {
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+    }
+}
+EOL
+
+# Enable the site and remove default
+mkdir -p /etc/nginx/sites-enabled
+ln -sf /etc/nginx/sites-available/polkadotjs /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Test nginx config only if not in Docker build
+if [ -z "$DOCKER_BUILD" ]; then
+    nginx -t
 fi
 
-# Move to project directory
-cd $APP_DIR
-
-# 🛠 Fix Memory Issues: Limit Node.js Memory Usage
-export NODE_OPTIONS="--max-old-space-size=512"
-
-# Build the Docker image
-echo "🐳 Building the Docker image..."
-sudo docker build --memory=1g -t $IMAGE_NAME -f docker/Dockerfile .
-
-# Stop and remove old container (if exists)
-echo "🛑 Stopping old container (if exists)..."
-sudo docker stop $IMAGE_NAME || true
-sudo docker rm $IMAGE_NAME || true
-
-# Run Polkadot.js container with the RPC URL
-echo "🚀 Running Polkadot.js container..."
-sudo docker run -d -p 80:80 --memory=1g --name $IMAGE_NAME -e WS_URL="$WS_URL" $IMAGE_NAME
-
-echo "✅ Polkadot.js Apps setup complete!"
+# Note: Don't start nginx here - it will be started by the container's CMD

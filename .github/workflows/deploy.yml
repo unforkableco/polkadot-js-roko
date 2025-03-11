@@ -6,62 +6,90 @@ on:
       release_version:
         description: "Release version to deploy (e.g., v1.0.0)"
         required: true
-      rpc_url:
-        description: "WS RPC URL"
+      ws_rpc_url:
+        description: "WebSocket RPC URL to use (e.g., wss://rpc.polkadot.io)"
         required: true
 
 jobs:
-  deploy-polkadotjs:
+  deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Inject RPC URL into setup script
-      run: |
-        echo '#!/bin/bash' > scripts/setup_with_rpc.sh
-        echo 'set -e' >> scripts/setup_with_rpc.sh
-        echo 'export DEBIAN_FRONTEND=noninteractive' >> scripts/setup_with_rpc.sh
-        echo "WS_URL=\"${{ inputs.rpc_url }}\"" >> scripts/setup_with_rpc.sh
-        cat scripts/setup_polkadotjs.sh >> scripts/setup_with_rpc.sh
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Create AWS EC2 Instance for Polkadot.js Apps
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
+    - name: Create user data script
       run: |
-        INSTANCE_ID=$(aws ec2 run-instances --image-id ami-04b4f1a9cf54c11d0 --count 1 --instance-type t3.micro --security-group-ids sg-0442d41440d018db1 \
-          --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":20,"DeleteOnTermination":true}}]' \
+        cat > user_data.sh << 'EOL'
+        #!/bin/bash
+        # Install AWS CLI
+        apt-get update
+        apt-get install -y awscli
+        
+        # Set the WS_RPC_URL environment variable
+        export WS_RPC_URL="${ws_rpc_url}"
+        
+        # Run the setup script
+        curl -o /tmp/setup.sh https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/scripts/setup_polkadotjs.sh
+        chmod +x /tmp/setup.sh
+        /tmp/setup.sh
+        EOL
+        
+        # Replace the placeholder with actual WS_RPC_URL
+        sed -i "s|\${ws_rpc_url}|${{ inputs.ws_rpc_url }}|g" user_data.sh
+
+    - name: Create EC2 Instance
+      id: create_ec2
+      run: |
+        # Get latest Amazon Linux 2 AMI ID
+        AMI_ID=$(aws ec2 describe-images \
+          --owners amazon \
+          --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-22.04-amd64-server-*" \
+                    "Name=state,Values=available" \
+          --query "reverse(sort_by(Images, &CreationDate))[0].ImageId" \
+          --output text)
+        
+        echo "Using AMI: $AMI_ID"
+        
+        # Create instance
+        INSTANCE_ID=$(aws ec2 run-instances \
+          --image-id $AMI_ID \
+          --instance-type t3.micro \
+          --security-group-ids sg-0442d41440d018db1 \
           --key-name unforkable \
-          --user-data file://scripts/setup_with_rpc.sh \
-          --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=polkadotjs-${{ inputs.release_version }}},{Key=Project,Value=PolkadotJS}]" \
-          --query "Instances[0].InstanceId" --output text)
+          --user-data file://user_data.sh \
+          --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=polkadotjs-${{ inputs.release_version }}},{Key=Project,Value=PolkadotJS},{Key=Version,Value=${{ inputs.release_version }}}]" \
+          --query 'Instances[0].InstanceId' \
+          --output text)
+        
+        echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
 
-        echo "POLKADOTJS_INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
-        echo "New AWS EC2 instance created with ID: $INSTANCE_ID"
-
-    - name: Get Public IP of the Instance
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
+    - name: Wait for Instance
       run: |
-        PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $POLKADOTJS_INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
-        echo "POLKADOTJS_PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
-        echo "AWS Instance Public IP: $PUBLIC_IP"
+        aws ec2 wait instance-status-ok \
+          --instance-ids ${{ steps.create_ec2.outputs.instance_id }}
 
-    - name: Wait for Instance to Be Ready
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
+    - name: Get Instance IP
+      id: get_ip
       run: |
-        echo "Waiting for AWS instance to be ready..."
-        aws ec2 wait instance-status-ok --instance-ids $POLKADOTJS_INSTANCE_ID
-        echo "AWS instance is now running."
+        PUBLIC_IP=$(aws ec2 describe-instances \
+          --instance-ids ${{ steps.create_ec2.outputs.instance_id }} \
+          --query 'Reservations[0].Instances[0].PublicIpAddress' \
+          --output text)
+        
+        echo "public_ip=$PUBLIC_IP" >> $GITHUB_OUTPUT
 
-    - name: Output Polkadot.js URL
+    - name: Output Deployment Info
       run: |
-        echo "🚀 Polkadot.js Apps is now deployed at: http://$POLKADOTJS_PUBLIC_IP"
+        echo "🚀 Deployment completed!"
+        echo "Instance ID: ${{ steps.create_ec2.outputs.instance_id }}"
+        echo "Public IP: ${{ steps.get_ip.outputs.public_ip }}"
+        echo "Access the app at: http://${{ steps.get_ip.outputs.public_ip }}"
+        echo "Using WS_RPC_URL: ${{ inputs.ws_rpc_url }}"
