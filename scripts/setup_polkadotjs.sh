@@ -30,6 +30,20 @@ sudo apt install -y docker.io git curl
 echo "🐳 Ensuring Docker is running..."
 sudo systemctl enable --now docker
 
+# ⚡ Fix Memory Issues: Add Swap Space (1GB)
+echo "🛠 Adding Swap Space..."
+SWAPFILE="/swapfile"
+if [ ! -f "$SWAPFILE" ]; then
+  sudo fallocate -l 1G $SWAPFILE
+  sudo chmod 600 $SWAPFILE
+  sudo mkswap $SWAPFILE
+  sudo swapon $SWAPFILE
+  echo "$SWAPFILE none swap sw 0 0" | sudo tee -a /etc/fstab
+  echo "✅ Swap Space Added."
+else
+  echo "✅ Swap Space already exists."
+fi
+
 # Clone Polkadot.js Apps repository
 echo "⬇️ Cloning Polkadot.js Apps repository..."
 sudo mkdir -p $APP_DIR
@@ -44,9 +58,12 @@ fi
 # Move to project directory
 cd $APP_DIR
 
+# 🛠 Fix Memory Issues: Limit Node.js Memory Usage
+export NODE_OPTIONS="--max-old-space-size=512"
+
 # Build the Docker image
 echo "🐳 Building the Docker image..."
-sudo docker build -t $IMAGE_NAME -f docker/Dockerfile .
+sudo docker build --memory=1g -t $IMAGE_NAME -f docker/Dockerfile .
 
 # Stop and remove old container (if exists)
 echo "🛑 Stopping old container (if exists)..."
@@ -55,6 +72,6 @@ sudo docker rm $IMAGE_NAME || true
 
 # Run Polkadot.js container with the RPC URL
 echo "🚀 Running Polkadot.js container..."
-sudo docker run -d -p 80:80 --name $IMAGE_NAME -e WS_URL="$WS_URL" $IMAGE_NAME
+sudo docker run -d -p 80:80 --memory=1g --name $IMAGE_NAME -e WS_URL="$WS_URL" $IMAGE_NAME
 
 echo "✅ Polkadot.js Apps setup complete!"
