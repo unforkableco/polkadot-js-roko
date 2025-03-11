@@ -67,6 +67,11 @@ jobs:
         # Redirect stdout and stderr to a log file
         exec 1> >(logger -s -t $(basename $0)) 2>&1
         
+        # Install required packages first
+        echo "Installing required packages..."
+        apt-get update
+        apt-get install -y unzip curl
+        
         # Install AWS CLI
         cd /tmp
         echo "Installing AWS CLI..."

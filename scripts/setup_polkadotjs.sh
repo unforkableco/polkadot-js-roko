@@ -73,15 +73,38 @@ log "Starting Polkadot.js setup..."
 
 # Update system and install dependencies
 log "Installing dependencies..."
-apt-get update
-apt-get install -y nginx curl unzip
+if ! apt-get update; then
+    log "ERROR: Failed to update package list"
+    exit 1
+fi
+
+# Install packages one by one to better handle failures
+for pkg in curl unzip nginx; do
+    log "Installing $pkg..."
+    if ! apt-get install -y $pkg; then
+        log "ERROR: Failed to install $pkg"
+        exit 1
+    fi
+done
 
 # Install AWS CLI
 log "Installing AWS CLI..."
 cd /tmp
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip -q awscliv2.zip
-./aws/install
+if ! curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; then
+    log "ERROR: Failed to download AWS CLI"
+    exit 1
+fi
+
+if ! unzip -q awscliv2.zip; then
+    log "ERROR: Failed to unzip AWS CLI"
+    exit 1
+fi
+
+if ! ./aws/install; then
+    log "ERROR: Failed to install AWS CLI"
+    exit 1
+fi
+
 rm -rf aws awscliv2.zip
 
 # Create directory for the app
