@@ -99,6 +99,10 @@ window.process_env = {
 };
 EOL
 
+# Stop nginx before configuration changes
+log "Stopping nginx..."
+systemctl stop nginx || true
+
 # Configure Nginx
 log "Configuring nginx..."
 cat > /etc/nginx/sites-available/polkadotjs << EOL
@@ -122,8 +126,8 @@ EOL
 # Enable the site and remove default
 log "Enabling nginx site..."
 mkdir -p /etc/nginx/sites-enabled
-ln -sf /etc/nginx/sites-available/polkadotjs /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/polkadotjs /etc/nginx/sites-enabled/
 
 # Set proper permissions
 log "Setting file permissions..."
@@ -140,12 +144,22 @@ fi
 if [ -z "$DOCKER_BUILD" ]; then
     log "Starting nginx..."
     systemctl enable nginx
-    systemctl start nginx
+    
+    # Force a restart of nginx
+    log "Restarting nginx..."
+    if ! systemctl restart nginx; then
+        log "ERROR: Failed to restart nginx"
+        systemctl status nginx
+        exit 1
+    fi
     
     # Check health
     log "Checking application health..."
     if ! check_health; then
         log "ERROR: Health check failed"
+        # Show nginx error log for debugging
+        log "Nginx error log:"
+        cat /var/log/nginx/error.log
         exit 1
     fi
 fi
