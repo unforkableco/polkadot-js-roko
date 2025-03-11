@@ -68,8 +68,24 @@ jobs:
         exec 1> >(logger -s -t $(basename $0)) 2>&1
         
         # Install AWS CLI
-        apt-get update
-        apt-get install -y awscli
+        cd /tmp
+        echo "Installing AWS CLI..."
+        if ! curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; then
+          echo "Failed to download AWS CLI"
+          exit 1
+        fi
+        
+        if ! unzip -q awscliv2.zip; then
+          echo "Failed to unzip AWS CLI"
+          exit 1
+        fi
+        
+        if ! ./aws/install; then
+          echo "Failed to install AWS CLI"
+          exit 1
+        fi
+        
+        rm -rf aws awscliv2.zip
         
         # Set the WS_RPC_URL environment variable
         export WS_RPC_URL="${ws_rpc_url}"

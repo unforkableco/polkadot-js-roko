@@ -7,6 +7,20 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+# Add error handling function
+handle_error() {
+    local exit_code=$?
+    log "ERROR: Command failed with exit code $exit_code"
+    if [ -f "/var/log/nginx/error.log" ]; then
+        log "Nginx error log:"
+        cat /var/log/nginx/error.log
+    fi
+    exit $exit_code
+}
+
+# Set up error handling
+trap 'handle_error' ERR
+
 # Add health check function
 check_health() {
     for i in {1..30}; do
@@ -28,18 +42,29 @@ verify_installation() {
         log "ERROR: nginx not installed"
         return 1
     fi
+    log "✓ Nginx is installed"
 
     # Check directories
     if [ ! -d "/var/www/polkadotjs" ]; then
         log "ERROR: Web root directory not created"
         return 1
     fi
+    log "✓ Web root directory exists"
 
     # Check nginx config
     if ! nginx -t &> /dev/null; then
         log "ERROR: Invalid nginx configuration"
+        nginx -t  # Run again to show the actual error
         return 1
     fi
+    log "✓ Nginx configuration is valid"
+
+    # Check file permissions
+    if ! [ -r "/var/www/polkadotjs/index.html" ]; then
+        log "ERROR: Cannot read index.html"
+        return 1
+    fi
+    log "✓ File permissions are correct"
 
     return 0
 }
@@ -49,7 +74,15 @@ log "Starting Polkadot.js setup..."
 # Update system and install dependencies
 log "Installing dependencies..."
 apt-get update
-apt-get install -y nginx curl unzip awscli
+apt-get install -y nginx curl unzip
+
+# Install AWS CLI
+log "Installing AWS CLI..."
+cd /tmp
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip -q awscliv2.zip
+./aws/install
+rm -rf aws awscliv2.zip
 
 # Create directory for the app
 log "Creating web root directory..."
