@@ -10,6 +10,12 @@ on:
         description: 'Version to release (e.g., v1.0.0)'
         required: true
 
+# Add explicit permissions
+permissions:
+  contents: write
+  packages: write
+  deployments: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
