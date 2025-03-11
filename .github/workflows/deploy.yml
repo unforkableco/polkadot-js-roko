@@ -97,19 +97,9 @@ jobs:
     - name: Create EC2 Instance
       id: create_ec2
       run: |
-        # Get latest Ubuntu 22.04 AMI ID
-        AMI_ID=$(aws ec2 describe-images \
-          --owners amazon \
-          --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-22.04-amd64-server-*" \
-                    "Name=state,Values=available" \
-          --query "reverse(sort_by(Images, &CreationDate))[0].ImageId" \
-          --output text)
-        
-        echo "Using AMI: $AMI_ID"
-        
         # Create instance with all required tags
         INSTANCE_ID=$(aws ec2 run-instances \
-          --image-id $AMI_ID \
+          --image-id ami-04b4f1a9cf54c11d0 \
           --instance-type t3.micro \
           --security-group-ids sg-0442d41440d018db1 \
           --key-name unforkable \
