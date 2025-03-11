@@ -32,7 +32,8 @@ jobs:
         
         # Try to download with curl, following redirects and showing headers
         TEMP_FILE=$(mktemp)
-        HTTP_CODE=$(curl -L -w "%{http_code}" -o "$TEMP_FILE" "$RELEASE_URL" 2>&1)
+        # Redirect progress to stderr and only capture the status code
+        HTTP_CODE=$(curl -L -s -w "%{http_code}" -o "$TEMP_FILE" "$RELEASE_URL")
         CURL_EXIT=$?
         
         echo "Curl exit code: $CURL_EXIT"
@@ -43,7 +44,7 @@ jobs:
           FILE_SIZE=$(stat -f%z "$TEMP_FILE" 2>/dev/null || stat -c%s "$TEMP_FILE" 2>/dev/null)
           echo "Downloaded file size: $FILE_SIZE bytes"
           if [ "$FILE_SIZE" -gt 0 ]; then
-            echo "✅ Release artifact verified"
+            echo "✅ Release artifact verified (${FILE_SIZE} bytes)"
             rm -f "$TEMP_FILE"
             exit 0
           else
@@ -55,6 +56,7 @@ jobs:
         echo "❌ Failed to verify release artifact"
         echo "Full curl output with headers:"
         curl -v -L "$RELEASE_URL"
+        rm -f "$TEMP_FILE"
         exit 1
 
     - name: Create user data script
