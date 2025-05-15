@@ -108,7 +108,7 @@ function Pool ({ accountId, className, info: { bonded: { roles }, metadata, nomi
       <td className='number'>
         {accInfo && (
           <>
-            {!accInfo.member.points.isZero() && <FormatBalance value={accInfo.member.points} />}
+            {!accInfo.member.points.isZero() && <FormatBalance formatIndex={1} value={accInfo.member.points} />}
             {stakingInfo && (
               <>
                 <StakingUnbonding stakingInfo={stakingInfo} />
@@ -121,7 +121,7 @@ function Pool ({ accountId, className, info: { bonded: { roles }, metadata, nomi
           </>
         )}
       </td>
-      <td className='number'>{accInfo && !accInfo.claimable.isZero() && <FormatBalance value={accInfo.claimable} />}</td>
+      <td className='number'>{accInfo && !accInfo.claimable.isZero() && <FormatBalance formatIndex={1} value={accInfo.claimable} />}</td>
       <td className='number'>
         {isFirst && nominating && (
           <ListNominees

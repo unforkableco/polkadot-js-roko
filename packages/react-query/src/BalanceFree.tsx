@@ -24,6 +24,7 @@ function BalanceFree ({ children, className = '', label, params }: Props): React
   return (
     <FormatBalance
       className={className}
+      formatIndex={1}
       label={label}
       value={allBalances?.freeBalance}
     >

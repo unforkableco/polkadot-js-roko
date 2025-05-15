@@ -28,6 +28,7 @@ function Balance ({ children, className = '', colSpan, label, labelPost, rowSpan
       {value
         ? (
           <FormatBalance
+            formatIndex={0}
             label={label}
             labelPost={labelPost}
             value={value}
@@ -36,6 +37,7 @@ function Balance ({ children, className = '', colSpan, label, labelPost, rowSpan
         : withLoading && (
           <FormatBalance
             className='--tmp'
+            formatIndex={0}
             value={1}
           />
         )

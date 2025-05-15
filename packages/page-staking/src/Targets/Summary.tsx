@@ -75,6 +75,7 @@ function Summary ({ avgStaked, className, lastEra, lowStaked, minNominated, minN
         >
           <FormatBalance
             className={progressStake.isBlurred ? '--tmp' : ''}
+            formatIndex={1}
             value={progressStake.value}
             withSi
           />
@@ -97,6 +98,7 @@ function Summary ({ avgStaked, className, lastEra, lowStaked, minNominated, minN
         >
           <span className={progressAvg.isBlurred ? '--tmp' : ''}>
             <FormatBalance
+              formatIndex={1}
               value={progressAvg.value}
               withCurrency={false}
               withSi
@@ -104,6 +106,7 @@ function Summary ({ avgStaked, className, lastEra, lowStaked, minNominated, minN
             &nbsp;/&nbsp;
             <FormatBalance
               className={progressAvg.isBlurred ? '--tmp' : ''}
+              formatIndex={1}
               value={progressAvg.total}
               withSi
             />
@@ -120,6 +123,7 @@ function Summary ({ avgStaked, className, lastEra, lowStaked, minNominated, minN
                 : t('min nominated')}
           >
             <FormatBalance
+              formatIndex={1}
               value={minNominated}
               withCurrency={!minNominatorBond}
               withSi
@@ -128,6 +132,7 @@ function Summary ({ avgStaked, className, lastEra, lowStaked, minNominated, minN
               <>
                 &nbsp;/&nbsp;
                 <FormatBalance
+                  formatIndex={1}
                   value={minNominatorBond}
                   withSi
                 />
@@ -140,6 +145,7 @@ function Summary ({ avgStaked, className, lastEra, lowStaked, minNominated, minN
         <CardSummary label={t('last reward')}>
           <FormatBalance
             className={lastReward ? '' : '--tmp'}
+            formatIndex={1}
             value={lastReward || 1}
             withSi
           />

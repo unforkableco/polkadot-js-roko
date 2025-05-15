@@ -90,7 +90,10 @@ function StakingUnbonding ({ className = '', iconPosition = 'left', stakingInfo 
           tooltip={trigger}
         />
       )}
-      <FormatBalance value={total} />
+      <FormatBalance
+        formatIndex={1}
+        value={total}
+      />
       <Tooltip trigger={trigger}>
         {mapped.map(([{ value }, eras, blocks], index): React.ReactNode => (
           <div

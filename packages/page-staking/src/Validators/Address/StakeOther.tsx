@@ -76,6 +76,7 @@ function StakeOther ({ nominators, stakeOther }: Props): React.ReactElement<Prop
           renderChildren={rewarded?.[1]}
           summary={
             <FormatBalance
+              formatIndex={1}
               labelPost={` (${rewarded ? rewarded[0] : '0'})`}
               value={rewardedTotal}
             />
@@ -88,6 +89,7 @@ function StakeOther ({ nominators, stakeOther }: Props): React.ReactElement<Prop
           renderChildren={unrewarded[1]}
           summary={
             <FormatBalance
+              formatIndex={1}
               labelPost={` (${unrewarded[0]})`}
               value={unrewardedTotal}
             />

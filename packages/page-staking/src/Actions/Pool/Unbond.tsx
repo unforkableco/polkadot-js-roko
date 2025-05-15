@@ -50,6 +50,7 @@ function Unbond ({ className, controllerId, maxUnbond, onClose, poolId }: Props)
             labelExtra={
               <FormatBalance
                 label={<span className='label'>{t('bonded')}</span>}
+                formatIndex={1}
                 value={maxUnbond}
               />
             }

@@ -69,17 +69,17 @@ function ValidateAmount ({ currentAmount, isNominating, minNominated, minNominat
       } else if (isNominating) {
         if (minNominatorBond && check.lt(minNominatorBond)) {
           newError = t('The bonded amount is less than the minimum threshold of {{minBond}} for nominators', {
-            replace: { minBond: formatBalance(minNominatorBond) }
+            replace: { minBond: formatBalance(minNominatorBond, { forceUnit: '-', withSi: true, withUnit: true, withZero: true, formatIndex: 1 }) }
           });
         } else if (minNominated && check.lt(minNominated)) {
           newWarning = t('The bonded amount is less than the current active minimum nominated amount of {{minNomination}} and depending on the network state, may not be selected to participate', {
-            replace: { minNomination: formatBalance(minNominated) }
+            replace: { minNomination: formatBalance(minNominated, { forceUnit: '-', withSi: true, withUnit: true, withZero: true, formatIndex: 1 }) }
           });
         }
       } else {
         if (minValidatorBond && check.lt(minValidatorBond)) {
           newError = t('The bonded amount is less than the minimum threshold of {{minBond}} for validators', {
-            replace: { minBond: formatBalance(minValidatorBond) }
+            replace: { minBond: formatBalance(minValidatorBond, { forceUnit: '-', withSi: true, withUnit: true, withZero: true, formatIndex: 1 }) }
           });
         }
       }

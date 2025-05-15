@@ -1,0 +1,21 @@
+{
+  "bugs": "https://github.com/polkadot-js/apps/issues",
+  "homepage": "https://github.com/polkadot-js/apps/tree/master/packages/page-pwroko#readme",
+  "license": "Apache-2.0",
+  "name": "@polkadot/app-pwroko",
+  "private": true,
+  "repository": {
+    "directory": "packages/page-pwroko",
+    "type": "git",
+    "url": "https://github.com/polkadot-js/apps.git"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "version": "0.133.2-15-x",
+  "main": "index.js",
+  "dependencies": {
+    "@polkadot/react-components": "^0.133.2-15-x",
+    "@polkadot/react-hooks": "^0.133.2-15-x",
+    "@polkadot/react-query": "^0.133.2-15-x"
+  }
+} 

@@ -33,6 +33,7 @@ function BondedDisplay ({ children, className = '', label, params }: Props): Rea
   return (
     <FormatBalance
       className={className}
+      formatIndex={1}
       label={label}
       value={stakingLedger?.active}
     >

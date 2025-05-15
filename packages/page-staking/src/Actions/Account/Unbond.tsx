@@ -48,6 +48,7 @@ function Unbond ({ controllerId, onClose, stakingLedger, stashId }: Props): Reac
             labelExtra={
               <FormatBalance
                 label={<span className='label'>{t('bonded')}</span>}
+                formatIndex={1}
                 value={maxBalance}
               />
             }

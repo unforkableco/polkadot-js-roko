@@ -112,7 +112,7 @@ function getValue (stashTypeIndex: number, { bondedNoms, bondedNone, bondedTotal
 function formatTotal (stashTypeIndex: number, state: State): React.ReactNode {
   const value = getValue(stashTypeIndex, state);
 
-  return value && <FormatBalance value={value} />;
+  return value && <FormatBalance formatIndex={1} value={value} />;
 }
 
 function Actions ({ className = '', isInElection, minCommission, ownPools, ownStashes, targets }: Props): React.ReactElement<Props> {

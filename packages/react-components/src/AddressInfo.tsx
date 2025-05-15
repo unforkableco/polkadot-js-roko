@@ -222,6 +222,7 @@ function renderValidatorPrefs ({ stakingInfo, withValidatorPrefs = false }: Prop
               <Label label={t('commission')} />
               <FormatBalance
                 className='result'
+                formatIndex={1}
                 value={(stakingInfo.validatorPrefs as any as ValidatorPrefsTo145).validatorPayment}
               />
             </>
@@ -246,7 +247,7 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
       <Label label={withLabel ? t('total') : ''} />
       <FormatBalance
         className={`result ${balancesAll ? '' : '--tmp'}`}
-        formatIndex={formatIndex}
+        formatIndex={0}
         labelPost={<IconVoid />}
         value={balancesAll ? balancesAll.freeBalance.add(balancesAll.reservedBalance) : 1}
       />
@@ -257,7 +258,7 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
       <Label label={t('transferable')} />
       <FormatBalance
         className='result'
-        formatIndex={formatIndex}
+        formatIndex={0}
         labelPost={<IconVoid />}
         value={deriveBalances.transferable || deriveBalances.availableBalance}
       />
@@ -272,7 +273,7 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
         <Label label={t('vested')} />
         <FormatBalance
           className='result'
-          formatIndex={formatIndex}
+          formatIndex={0}
           labelPost={
             <Icon
               icon='info-circle'
@@ -319,7 +320,7 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
       <Label label={t('locked')} />
       <FormatBalance
         className='result'
-        formatIndex={formatIndex}
+        formatIndex={0}
         labelPost={
           <>
             <Icon
@@ -350,7 +351,7 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
       <Label label={t('reserved')} />
       <FormatBalance
         className='result'
-        formatIndex={formatIndex}
+        formatIndex={0}
         labelPost={
           hasNamedReserves
             ? (
@@ -380,14 +381,14 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
       <Label label={t('bonded')} />
       <FormatBalance
         className='result'
-        formatIndex={formatIndex}
+        formatIndex={1}
         labelPost={<IconVoid />}
         value={ownBonded}
       >
         {otherBonded.length !== 0 && (
           <>&nbsp;(+{otherBonded.map((bonded, index): React.ReactNode =>
             <FormatBalance
-              formatIndex={formatIndex}
+              formatIndex={1}
               key={index}
               labelPost={<IconVoid />}
               value={bonded}
@@ -450,6 +451,7 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
           <Label label={t('referenda')} />
           <FormatBalance
             className='result'
+            formatIndex={1}
             labelPost={
               <>
                 <Icon
@@ -505,7 +507,7 @@ function createBalanceItems (formatIndex: number, lookup: Record<string, string>
           className={balancesAll ? '' : 'isBlurred'}
           summary={
             <FormatBalance
-              formatIndex={formatIndex}
+              formatIndex={0}
               value={balancesAll?.freeBalance.add(balancesAll.reservedBalance)}
             />
           }

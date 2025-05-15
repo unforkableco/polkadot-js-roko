@@ -33,6 +33,7 @@ export function renderProvided ({ className = '', label, value }: RenderProps): 
     if (total) {
       others = totals.map((balance, index): React.ReactNode =>
         <FormatBalance
+          formatIndex={0}
           key={index}
           value={balance}
         />
@@ -43,6 +44,7 @@ export function renderProvided ({ className = '', label, value }: RenderProps): 
   return (
     <FormatBalance
       className={`${className} ui--Balance`}
+      formatIndex={0}
       label={label}
       value={Array.isArray(value) ? value[0] : value}
     >
