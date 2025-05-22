@@ -1,7 +1,7 @@
 // Copyright 2017-2025 @polkadot/app-pwroko authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 
 import { useAccounts } from '@polkadot/react-hooks';
 import { FormatBalance } from '@polkadot/react-query';
@@ -10,7 +10,8 @@ import { useTranslation } from '../translate.js';
 import { useApi } from '@polkadot/react-hooks';
 import { useCall } from '@polkadot/react-hooks';
 import type { DeriveBalancesAll } from '@polkadot/api-derive/types';
-import { AddressSmall } from '@polkadot/react-components';
+import { AddressSmall, Button, InputAddress, InputBalance, TxButton } from '@polkadot/react-components';
+import { BN, BN_ZERO } from '@polkadot/util';
 
 interface Props {
   className?: string;
@@ -18,8 +19,32 @@ interface Props {
 
 function Overview ({ className }: Props): React.ReactElement<Props> {
   const { t } = useTranslation();
-  const { allAccounts } = useAccounts();
   const { api } = useApi();
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [lockAmount, setLockAmount] = useState<BN>(BN_ZERO);
+  const [unlockAmount, setUnlockAmount] = useState<BN>(BN_ZERO);
+
+  // Query native ROKO balance
+  const rokoBalance = useCall<DeriveBalancesAll>(api.derive.balances?.all, [selectedAccount]);
+  
+  // Query pwROKO balance
+  const pwrokoBalance = useCall<any>(api.query.pwRoko?.balances, [selectedAccount]);
+
+  const hasLockValue = lockAmount.gt(BN_ZERO);
+  const isLockValid = hasLockValue && lockAmount.lte(rokoBalance?.freeBalance || BN_ZERO);
+
+  const hasUnlockValue = unlockAmount.gt(BN_ZERO);
+  const isUnlockValid = hasUnlockValue && unlockAmount.lte(pwrokoBalance || BN_ZERO);
+
+  const _setLockAmount = useCallback(
+    (value?: BN) => setLockAmount(value || BN_ZERO),
+    []
+  );
+
+  const _setUnlockAmount = useCallback(
+    (value?: BN) => setUnlockAmount(value || BN_ZERO),
+    []
+  );
 
   return (
     <StyledDiv className={className}>
@@ -27,33 +52,80 @@ function Overview ({ className }: Props): React.ReactElement<Props> {
         <div className='header'>
           <h1>{t('Account Balances')}</h1>
         </div>
-        <div className='accounts'>
-          {allAccounts.map((accountId) => {
-            const balances = useCall<DeriveBalancesAll>(api.derive.balances?.all, [accountId]);
-
-            return (
-              <div className='account' key={accountId}>
-                <AddressSmall value={accountId} />
-                <div className='balances'>
-                  <div className='balance'>
-                    <label>{t('ROKO')}:</label>
-                    <FormatBalance
-                      formatIndex={0}
-                      value={balances?.freeBalance}
-                    />
-                  </div>
-                  <div className='balance'>
-                    <label>{t('pwROKO')}:</label>
-                    <FormatBalance
-                      formatIndex={1}
-                      value={balances?.freeBalance}
-                    />
-                  </div>
+        <div className='selector'>
+          <InputAddress
+            label={t('select account')}
+            onChange={setSelectedAccount}
+            type='account'
+          />
+        </div>
+        {selectedAccount && (
+          <>
+            <div className='balances'>
+              <div className='balance'>
+                <span className='label'>{t('ROKO')}:</span>
+                <FormatBalance
+                  value={rokoBalance?.freeBalance}
+                  withCurrency={false}
+                  withSi
+                />
+              </div>
+              <div className='balance'>
+                <span className='label'>{t('pwROKO')}:</span>
+                <FormatBalance
+                  value={pwrokoBalance}
+                  withCurrency={false}
+                  withSi
+                />
+              </div>
+            </div>
+            <div className='actions-section'>
+              <div className='action-box'>
+                <h3>{t('Lock ROKO')}</h3>
+                <div className='input-section'>
+                  <InputBalance
+                    autoFocus
+                    isError={!isLockValid}
+                    label={t('lock amount')}
+                    onChange={_setLockAmount}
+                    siSymbol='ROKO'
+                  />
+                </div>
+                <div className='button-section'>
+                  <TxButton
+                    accountId={selectedAccount}
+                    icon='lock'
+                    isDisabled={!isLockValid}
+                    label={t('Lock ROKO')}
+                    params={[lockAmount]}
+                    tx={api.tx.pwRoko.lock}
+                  />
                 </div>
               </div>
-            );
-          })}
-        </div>
+              <div className='action-box'>
+                <h3>{t('Unlock pwROKO')}</h3>
+                <div className='input-section'>
+                  <InputBalance
+                    isError={!isUnlockValid}
+                    label={t('unlock amount')}
+                    onChange={_setUnlockAmount}
+                    siSymbol='pwROKO'
+                  />
+                </div>
+                <div className='button-section'>
+                  <TxButton
+                    accountId={selectedAccount}
+                    icon='unlock'
+                    isDisabled={!isUnlockValid}
+                    label={t('Unlock pwROKO')}
+                    params={[unlockAmount]}
+                    tx={api.tx.pwRoko.unlock}
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </StyledDiv>
   );
@@ -61,45 +133,59 @@ function Overview ({ className }: Props): React.ReactElement<Props> {
 
 const StyledDiv = styled.div`
   .pwroko--App-accounts {
-    width: 100%;
-    padding: 1rem;
-
     .header {
-      margin-bottom: 1rem;
+      margin-bottom: 1em;
+      text-align: center;
+    }
 
-      h1 {
-        margin: 0;
-        font-size: 1.5rem;
+    .selector {
+      margin-bottom: 1em;
+    }
+
+    .balances {
+      display: flex;
+      gap: 1em;
+      justify-content: center;
+      margin-top: 1em;
+      padding: 1em;
+      background: var(--bg-table);
+      border-radius: 0.25rem;
+
+      .balance {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+
+        .label {
+          font-weight: var(--font-weight-normal);
+          opacity: 0.66;
+        }
       }
     }
 
-    .accounts {
+    .actions-section {
+      margin-top: 1em;
       display: flex;
-      flex-direction: column;
-      gap: 1rem;
+      gap: 1em;
 
-      .account {
+      .action-box {
+        flex: 1;
+        padding: 1em;
         background: var(--bg-table);
-        padding: 1rem;
         border-radius: 0.25rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
 
-        .balances {
+        h3 {
+          margin: 0 0 1em;
+          text-align: center;
+        }
+
+        .input-section {
+          margin-bottom: 1em;
+        }
+
+        .button-section {
           display: flex;
-          gap: 2rem;
-
-          .balance {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-
-            label {
-              font-weight: var(--font-weight-normal);
-              color: var(--color-label);
-            }
-          }
+          justify-content: center;
         }
       }
     }
