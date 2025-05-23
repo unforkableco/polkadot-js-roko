@@ -65,7 +65,7 @@ if ! apt-get update; then
 fi
 
 # Install packages one by one to better handle failures
-for pkg in curl nginx; do
+for pkg in curl nginx software-properties-common python3-certbot-nginx; do
     log "Installing $pkg..."
     if ! apt-get install -y $pkg; then
         log "ERROR: Failed to install $pkg"
@@ -108,7 +108,7 @@ log "Configuring nginx..."
 cat > /etc/nginx/sites-available/polkadotjs << EOL
 server {
     listen 80;
-    server_name _;
+    server_name ${DOMAIN_NAME};
     root /var/www/polkadotjs;
     index index.html;
 
@@ -140,28 +140,30 @@ if ! verify_installation; then
     exit 1
 fi
 
-# Start nginx if not in Docker
-if [ -z "$DOCKER_BUILD" ]; then
-    log "Starting nginx..."
-    systemctl enable nginx
+# Start nginx
+log "Starting nginx..."
+systemctl enable nginx
+systemctl restart nginx
+
+# Obtain SSL certificate
+if [ -n "${DOMAIN_NAME}" ]; then
+    log "Setting up HTTPS with Certbot..."
+    certbot --nginx --non-interactive --agree-tos --email ${ADMIN_EMAIL} -d ${DOMAIN_NAME} --redirect
     
-    # Force a restart of nginx
-    log "Restarting nginx..."
-    if ! systemctl restart nginx; then
-        log "ERROR: Failed to restart nginx"
-        systemctl status nginx
-        exit 1
-    fi
-    
-    # Check health
-    log "Checking application health..."
-    if ! check_health; then
-        log "ERROR: Health check failed"
-        # Show nginx error log for debugging
-        log "Nginx error log:"
-        cat /var/log/nginx/error.log
-        exit 1
-    fi
+    # Set up auto-renewal
+    log "Setting up automatic certificate renewal..."
+    systemctl enable certbot.timer
+    systemctl start certbot.timer
+fi
+
+# Check health
+log "Checking application health..."
+if ! check_health; then
+    log "ERROR: Health check failed"
+    # Show nginx error log for debugging
+    log "Nginx error log:"
+    cat /var/log/nginx/error.log
+    exit 1
 fi
 
 log "Setup completed successfully!"
