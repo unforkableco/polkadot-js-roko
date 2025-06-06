@@ -17,6 +17,7 @@ import contracts from './contracts.js';
 import coretime from './coretime.js';
 import council from './council.js';
 import democracy from './democracy.js';
+import evm from './evm.js';
 import explorer from './explorer.js';
 import extrinsics from './extrinsics.js';
 import fellowship from './fellowship.js';
@@ -103,6 +104,7 @@ export default function create (t: TFunction): Routes {
     files(t),
     js(t),
     utilities(t),
+    evm(t),
     settings(t)
   ];
 }

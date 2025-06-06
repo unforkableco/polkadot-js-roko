@@ -34,9 +34,7 @@ function PwRokoApp ({ basePath, className }: Props): React.ReactElement<Props> {
       <Routes>
         <Route path={basePath}>
           <Route
-            element={
-              <Overview />
-            }
+            element={<Overview />}
             index
           />
         </Route>
