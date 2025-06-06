@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "outDir": "./build",
+    "rootDir": "./src"
+  },
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/test/**/*"
+  ],
+  "references": [
+    { "path": "../react-components/tsconfig.build.json" },
+    { "path": "../react-hooks/tsconfig.build.json" },
+    { "path": "../react-query/tsconfig.build.json" }
+  ]
+}

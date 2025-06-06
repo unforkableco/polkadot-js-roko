@@ -3,14 +3,14 @@
 
 import React, { useCallback, useState } from 'react';
 
-import { useAccounts } from '@polkadot/react-hooks';
+// import { useAccounts } from '@polkadot/react-hooks';
 import { FormatBalance } from '@polkadot/react-query';
 import { styled } from '@polkadot/react-components/styled';
 import { useTranslation } from '../translate.js';
 import { useApi } from '@polkadot/react-hooks';
 import { useCall } from '@polkadot/react-hooks';
 import type { DeriveBalancesAll } from '@polkadot/api-derive/types';
-import { AddressSmall, Button, InputAddress, InputBalance, TxButton } from '@polkadot/react-components';
+import { InputAddress, InputBalance, TxButton } from '@polkadot/react-components';
 import { BN, BN_ZERO } from '@polkadot/util';
 
 interface Props {
@@ -29,6 +29,19 @@ function Overview ({ className }: Props): React.ReactElement<Props> {
   
   // Query pwROKO balance
   const pwrokoBalance = useCall<any>(api.query.pwRoko?.balances, [selectedAccount]);
+  
+  // Query staking info (bonded amount)
+  const stakingLedger = useCall<any>(api.query.staking?.ledger, [selectedAccount]);
+  const bondedAmount = stakingLedger?.active || BN_ZERO;
+  
+  // Query delegated amount (if delegation pallet exists)
+  const delegatedAmount = useCall<any>(api.query.delegation?.delegations, [selectedAccount]);
+  const totalDelegated = delegatedAmount?.amount || BN_ZERO;
+  
+  // Calculate free pwROKO (total - bonded - delegated)
+  const freePwRoko = pwrokoBalance ? 
+    BN.max(BN_ZERO, pwrokoBalance.sub(bondedAmount).sub(totalDelegated)) : 
+    BN_ZERO;
 
   const hasLockValue = lockAmount.gt(BN_ZERO);
   const isLockValid = hasLockValue && lockAmount.lte(rokoBalance?.freeBalance || BN_ZERO);
@@ -70,13 +83,43 @@ function Overview ({ className }: Props): React.ReactElement<Props> {
                   withSi
                 />
               </div>
-              <div className='balance'>
-                <span className='label'>{t('pwROKO')}:</span>
-                <FormatBalance
-                  value={pwrokoBalance}
-                  withCurrency={false}
-                  withSi
-                />
+              <div className='balance-section'>
+                <h3>⚡ {t('Balances pwROKO')}</h3>
+                <div className='pwroko-balances'>
+                  <div className='balance-item'>
+                    <span className='label'>{t('Total pwROKO')}:</span>
+                    <FormatBalance
+                      value={pwrokoBalance}
+                      withCurrency={false}
+                      withSi
+                    />
+                  </div>
+                  <div className='balance-item'>
+                    <span className='label'>{t('Bonded (Staked)')}:</span>
+                    <FormatBalance
+                      value={bondedAmount}
+                      withCurrency={false}
+                      withSi
+                    />
+                  </div>
+                  <div className='balance-item'>
+                    <span className='label'>{t('Delegated')}:</span>
+                    <FormatBalance
+                      value={totalDelegated}
+                      withCurrency={false}
+                      withSi
+                    />
+                  </div>
+                  <div className='balance-item free-balance'>
+                    <span className='label'>{t('Free pwROKO')}:</span>
+                    <FormatBalance
+                      value={freePwRoko}
+                      withCurrency={false}
+                      withSi
+                    />
+                    <span className='calculation'>({t('Total')} - {t('Bonded')} - {t('Delegated')})</span>
+                  </div>
+                </div>
               </div>
             </div>
             <div className='actions-section'>
@@ -144,8 +187,8 @@ const StyledDiv = styled.div`
 
     .balances {
       display: flex;
-      gap: 1em;
-      justify-content: center;
+      flex-direction: column;
+      gap: 1.5em;
       margin-top: 1em;
       padding: 1em;
       background: var(--bg-table);
@@ -154,11 +197,56 @@ const StyledDiv = styled.div`
       .balance {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 0.5em;
 
         .label {
           font-weight: var(--font-weight-normal);
           opacity: 0.66;
+        }
+      }
+
+      .balance-section {
+        h3 {
+          text-align: center;
+          margin-bottom: 1em;
+          color: var(--color-summary);
+          font-size: 1.1em;
+        }
+
+        .pwroko-balances {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1em;
+
+          .balance-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.75em;
+            background: var(--bg-input);
+            border-radius: 0.25rem;
+
+            .label {
+              font-weight: var(--font-weight-normal);
+              opacity: 0.8;
+              margin-bottom: 0.5em;
+              font-size: 0.9em;
+            }
+
+            &.free-balance {
+              grid-column: 1 / -1;
+              background: var(--bg-button);
+              border: 1px solid var(--border-input);
+
+              .calculation {
+                font-size: 0.8em;
+                opacity: 0.7;
+                margin-top: 0.25em;
+                font-style: italic;
+              }
+            }
+          }
         }
       }
     }

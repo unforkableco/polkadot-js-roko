@@ -35,6 +35,7 @@ import SignFields from './SignFields.js';
 import Tip from './Tip.js';
 import Transaction from './Transaction.js';
 import { useTranslation } from './translate.js';
+import { ensureTestAccountExists } from './testAccounts.js';
 import { cacheUnlock, extractExternal, handleTxResults } from './util.js';
 
 interface Props {
@@ -197,7 +198,18 @@ async function wrapTx (api: ApiPromise, currentItem: QueueTx, { isMultiCall, mul
 }
 
 async function extractParams (api: ApiPromise, address: string, options: Partial<SignerOptions>, getLedger: () => LedgerGeneric | Ledger, setQrState: (state: QrState) => void): Promise<['qr' | 'signing', string, Partial<SignerOptions>, boolean]> {
-  const pair = keyring.getPair(address);
+  let pair;
+  try {
+    pair = keyring.getPair(address);
+  } catch (error) {
+    // Try to create test account if it's one of them
+    pair = ensureTestAccountExists(address);
+    
+    if (!pair) {
+      throw new Error(`Unable to retrieve keypair for ${address}`);
+    }
+  }
+  
   const { meta: { accountOffset, addressOffset, isExternal, isHardware, isInjected, isLocal, isProxied, source } } = pair;
 
   if (isHardware) {

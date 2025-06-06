@@ -1,0 +1,21 @@
+{
+  "Stake pwROKO": "Staker pwROKO",
+  "Unstake pwROKO": "Déstaker pwROKO",
+  "Amount to stake": "Montant à staker",
+  "Amount to unstake": "Montant à déstaker",
+  "Stake": "Staker",
+  "Unstake": "Déstaker",
+  "Staking...": "Staking en cours...",
+  "Unstaking...": "Déstaking en cours...",
+  "Your Balances": "Vos Soldes",
+  "Free Balance": "Solde Libre",
+  "Staked Balance": "Solde Staké",
+  "Pending Unlock": "En attente de déverrouillage",
+  "Total Balance": "Solde Total",
+  "Transaction hash": "Hash de la transaction",
+  "Block number": "Numéro de bloc",
+  "Staked (add to stake)": "Staké (ajouté au stake)",
+  "Stash (liquid)": "Stash (liquide)",
+  "Controller (liquid)": "Controller (liquide)",
+  "Reward Destination": "Destination des récompenses"
+} 

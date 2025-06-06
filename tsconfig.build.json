@@ -42,6 +42,7 @@
     { "path": "./packages/page-parachains/tsconfig.build.json" },
     { "path": "./packages/page-poll/tsconfig.build.json" },
     { "path": "./packages/page-preimages/tsconfig.build.json" },
+    { "path": "./packages/page-pwroko/tsconfig.build.json" },
     { "path": "./packages/page-ranked/tsconfig.build.json" },
     { "path": "./packages/page-referenda/tsconfig.build.json" },
     { "path": "./packages/page-rpc/tsconfig.build.json" },

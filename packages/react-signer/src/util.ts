@@ -8,6 +8,8 @@ import type { AddressFlags } from './types.js';
 
 import { keyring } from '@polkadot/ui-keyring';
 
+import { ensureTestAccountExists } from './testAccounts.js';
+
 const NOOP = () => undefined;
 const NO_FLAGS = { accountOffset: 0, addressOffset: 0, isHardware: false, isLocal: false, isMultisig: false, isProxied: false, isQr: false, isUnlockable: false, threshold: 0, who: [] };
 
@@ -42,7 +44,21 @@ export function extractExternal (accountId: string | null): AddressFlags {
     return NO_FLAGS;
   }
 
-  const pair = keyring.getPair(publicKey);
+  let pair;
+
+  try {
+    pair = keyring.getPair(publicKey);
+  } catch (error) {
+    console.error('Keypair not found:', error);
+    
+    // Try to create test account if it's one of them
+    pair = ensureTestAccountExists(accountId);
+    
+    if (!pair) {
+      return NO_FLAGS;
+    }
+  }
+
   const { isExternal, isHardware, isInjected, isLocal, isMultisig, isProxied } = pair.meta;
   const isUnlockable = !isExternal && !isHardware && !isInjected;
 
