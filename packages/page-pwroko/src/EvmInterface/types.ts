@@ -24,10 +24,29 @@ export interface Balances {
   rokoReservedBalance: string | null;
   rokoTotalBalance: string | null;
   pwRokoBalance: string | null;
+  
+  // Détails des balances pwROKO
+  freeAmount: string | null;
+  
+  // Détails du staking via API Polkadot.js
+  bondedAmount: string | null;        // Montant bondé (actif dans le staking)
+  unbondingAmount: string | null;     // Montant en période d'unbonding
+  redeemableAmount: string | null;    // Montant prêt à être récupéré du staking
+  
+  // Conversion pwROKO -> ROKO
+  pendingConversionAmount: string | null;  // En attente de conversion
+  readyConversionAmount: string | null;    // Prêt à être converti
+  
+  // Unlock général
   pendingUnlockAmount: string | null;
   readyUnlockAmount: string | null;
+  
+  // Legacy/autres
   stakedAmount: string | null;
   delegatedAmount: string | null;
+  
+  // Total calculé
+  totalOwned: string | null;
 }
 
 declare global {
