@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 
 import { Button, Card, Input } from '@polkadot/react-components';
 import { useTranslation } from '../translate.js';
+import { nominateValidators } from './utils.js';
 import type { ContractInstances } from './types.js';
 
 interface Props {
@@ -17,23 +18,57 @@ function ValidatorNomination ({ contracts, account, txPending }: Props): React.R
   const { t } = useTranslation();
   const [currentAddress, setCurrentAddress] = useState<string>('');
   const [validatorList, setValidatorList] = useState<string[]>([]);
+  const [isNominating, setIsNominating] = useState<boolean>(false);
+  const [nominationError, setNominationError] = useState<string>('');
+  const [nominationSuccess, setNominationSuccess] = useState<string>('');
 
   const handleAddValidator = () => {
     const trimmedAddress = currentAddress.trim();
     if (trimmedAddress && !validatorList.includes(trimmedAddress)) {
       setValidatorList([...validatorList, trimmedAddress]);
       setCurrentAddress('');
+      // Réinitialiser les messages d'état
+      setNominationError('');
+      setNominationSuccess('');
     }
   };
 
   const handleRemoveValidator = (addressToRemove: string) => {
     setValidatorList(validatorList.filter(addr => addr !== addressToRemove));
+    // Réinitialiser les messages d'état
+    setNominationError('');
+    setNominationSuccess('');
   };
 
-  const handleNominate = () => {
-    if (validatorList.length > 0) {
-      // TODO: Implement nomination logic with precompile
-      console.log('Nominating validators:', validatorList);
+  const handleNominate = async () => {
+    if (validatorList.length === 0) {
+      setNominationError(t('Please add at least one validator'));
+      return;
+    }
+
+    if (!account) {
+      setNominationError(t('No account selected'));
+      return;
+    }
+
+    setIsNominating(true);
+    setNominationError('');
+    setNominationSuccess('');
+
+    try {
+      console.log('Starting nomination process...');
+      const txHash = await nominateValidators(validatorList, account);
+      
+      setNominationSuccess(t('Nomination transaction sent! Hash: {{hash}}', { replace: { hash: txHash.slice(0, 10) + '...' } }));
+      console.log('Nomination successful, transaction hash:', txHash);
+      
+      // Optionnel: réinitialiser la liste après succès
+      // setValidatorList([]);
+    } catch (error: any) {
+      console.error('Nomination failed:', error);
+      setNominationError(t('Nomination failed: {{error}}', { replace: { error: error.message || 'Unknown error' } }));
+    } finally {
+      setIsNominating(false);
     }
   };
 
@@ -58,6 +93,33 @@ function ValidatorNomination ({ contracts, account, txPending }: Props): React.R
         {t('Nominate trusted validators to support the network and earn staking rewards. You must have staked tokens to nominate.')}
       </p>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        {/* Messages d'état */}
+        {nominationError && (
+          <div style={{ 
+            marginBottom: '1rem', 
+            padding: '0.75rem', 
+            backgroundColor: 'var(--bg-tabs)', 
+            border: '1px solid #e74c3c', 
+            borderRadius: '0.25rem',
+            color: '#e74c3c'
+          }}>
+            {nominationError}
+          </div>
+        )}
+        
+        {nominationSuccess && (
+          <div style={{ 
+            marginBottom: '1rem', 
+            padding: '0.75rem', 
+            backgroundColor: 'var(--bg-tabs)', 
+            border: '1px solid #27ae60', 
+            borderRadius: '0.25rem',
+            color: '#27ae60'
+          }}>
+            {nominationSuccess}
+          </div>
+        )}
+
         {/* Add Validator Input */}
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -118,6 +180,7 @@ function ValidatorNomination ({ contracts, account, txPending }: Props): React.R
                     icon='times'
                     onClick={() => handleRemoveValidator(validator)}
                     isBasic
+                    isDisabled={isNominating}
                   />
                 </div>
               ))}
@@ -129,9 +192,10 @@ function ValidatorNomination ({ contracts, account, txPending }: Props): React.R
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Button
             icon='user-check'
-            label={t('Nominate Validators')}
+            label={isNominating ? t('Nominating...') : t('Nominate Validators')}
             onClick={handleNominate}
-            isDisabled={txPending || validatorList.length === 0}
+            isDisabled={txPending || validatorList.length === 0 || isNominating || !account}
+            isBusy={isNominating}
           />
         </div>
       </div>

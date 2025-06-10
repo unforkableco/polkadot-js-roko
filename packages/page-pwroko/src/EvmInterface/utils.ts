@@ -89,8 +89,8 @@ export const getDetailedRokoBalances = async (address: string, api: ApiPromise |
 
 export const getPwRokoBalance = async (address: string): Promise<string> => {
   try {
-    if (!address) {
-      return 'Missing address';
+    if (!address || !window.ethereum) {
+      return 'Missing address or ethereum provider';
     }
     
     const functionSelector = '0x70a08231';
@@ -117,10 +117,10 @@ export const getPwRokoBalance = async (address: string): Promise<string> => {
 
 export const getUnlockAmounts = async (address: string) => {
   try {
-    if (!address) {
+    if (!address || !window.ethereum) {
       return {
-        pending: 'Missing address',
-        ready: 'Missing address'
+        pending: 'Missing address or ethereum provider',
+        ready: 'Missing address or ethereum provider'
       };
     }
     
@@ -165,8 +165,8 @@ export const getUnlockAmounts = async (address: string) => {
 
 export const getStakedAmount = async (address: string): Promise<string> => {
   try {
-    if (!address) {
-      return 'Missing address';
+    if (!address || !window.ethereum) {
+      return 'Missing address or ethereum provider';
     }
     
     const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -244,8 +244,8 @@ export const getStakedAmountSubstrate = async (address: string, api: ApiPromise 
       const lockedBalance = await api.query.pwRoko?.lockedBalances(address);
       const rewardLocked = await api.query.pwRoko?.rewardLockedBalances(address);
       
-      const locked = lockedBalance || new BN(0);
-      const reward = rewardLocked || new BN(0);
+      const locked = new BN((lockedBalance as any)?.toString() || '0');
+      const reward = new BN((rewardLocked as any)?.toString() || '0');
       const totalLocked = locked.add(reward);
       
       console.log('Debug: Substrate API results:');
@@ -280,5 +280,75 @@ export const getDelegatedAmount = async (address: string): Promise<string> => {
     return '0';
   } catch (error: any) {
     return `Error: ${error.message}`;
+  }
+};
+
+export const buildNominateData = (validators: string[]): string => {
+  console.log("Building nominate data for validators:", validators);
+  
+  // Format simple: selector (4 bytes) + count (32 bytes) + addresses (32 bytes each, left-padded)
+  const selector = '00000003';
+  
+  // Count en format uint256 (32 bytes) avec ethers.utils.hexZeroPad
+  const count = ethers.utils.hexZeroPad(`0x${validators.length.toString(16)}`, 32).slice(2);
+  
+  // Chaque adresse doit être paddée à 32 bytes avec ethers.utils.hexZeroPad
+  const paddedAddresses = validators.map(addr => {
+    return ethers.utils.hexZeroPad(addr, 32).slice(2);
+  }).join('');
+  
+  const data = '0x' + selector + count + paddedAddresses;
+  
+  console.log("Nominate data breakdown:");
+  console.log("- Selector:", selector);
+  console.log("- Count:", count, "(", validators.length, "validators )");
+  console.log("- Addresses:", paddedAddresses);
+  console.log("- Final data:", data);
+  console.log("- Data length:", data.length, "characters (", (data.length - 2) / 2, "bytes )");
+  
+  return data;
+};
+
+export const nominateValidators = async (validators: string[], fromAddress: string): Promise<string> => {
+  try {
+    if (!validators.length) {
+      throw new Error('No validators provided');
+    }
+    
+    if (!fromAddress) {
+      throw new Error('No from address provided');
+    }
+    
+    if (!window.ethereum) {
+      throw new Error('Ethereum provider not available');
+    }
+    
+    console.log('Nominating validators:', validators);
+    console.log('From address:', fromAddress);
+    
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    
+    // Construire les données de la transaction
+    const data = buildNominateData(validators);
+    
+    // Préparer la transaction
+    const transaction = {
+      to: STAKING_PRECOMPILE_ADDRESS,
+      data: data,
+      from: fromAddress,
+      gasLimit: ethers.utils.hexlify(500000), // Limite de gas généreuse
+    };
+    
+    console.log('Transaction prepared:', transaction);
+    
+    // Envoyer la transaction
+    const tx = await signer.sendTransaction(transaction);
+    console.log('Transaction sent:', tx.hash);
+    
+    return tx.hash;
+  } catch (error: any) {
+    console.error('Error nominating validators:', error);
+    throw error;
   }
 };
