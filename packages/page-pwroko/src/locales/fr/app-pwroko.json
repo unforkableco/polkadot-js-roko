@@ -17,5 +17,19 @@
   "Staked (add to stake)": "Staké (ajouté au stake)",
   "Stash (liquid)": "Stash (liquide)",
   "Controller (liquid)": "Controller (liquide)",
-  "Reward Destination": "Destination des récompenses"
+  "Reward Destination": "Destination des récompenses",
+  
+  "Balances ROKO": "Balances ROKO",
+  "Balances pwROKO Détaillées": "Balances pwROKO Détaillées",
+  "🟢 Libre": "🟢 Libre",
+  "🟠 Réservé": "🟠 Réservé", 
+  "🔵 Total": "🔵 Total",
+  "🆓 Libre": "🆓 Libre",
+  "🔒 Bondé (Staking)": "🔒 Bondé (Staking)",
+  "⏳ Unbonding": "⏳ Unbonding",
+  "✅ Prêt à récupérer": "✅ Prêt à récupérer",
+  "🔄 Conversion en cours": "🔄 Conversion en cours",
+  "🎯 Prêt à convertir": "🎯 Prêt à convertir",
+  "💎 Total Possédé": "💎 Total Possédé",
+  "🔄 Refresh Balances": "🔄 Actualiser les Balances"
 } 

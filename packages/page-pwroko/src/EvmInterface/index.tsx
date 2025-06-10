@@ -14,7 +14,7 @@ import LockUnlock from './LockUnlock.js';
 import Staking from './Staking.js';
 import ValidatorNomination from './ValidatorNomination.js';
 import TransactionResult from './TransactionResult.js';
-import { getRokoBalance, getDetailedRokoBalances, getPwRokoBalance, getUnlockAmounts, getStakedAmount, getStakedAmountSubstrate, getDelegatedAmount } from './utils.js';
+import { getRokoBalance, getDetailedRokoBalances, getPwRokoBalance, getUnlockAmounts, getStakedAmount, getStakedAmountSubstrate, getDelegatedAmount, getAllPwRokoBalancesWithStaking } from './utils.js';
 import type { ContractInstances, TxResult, Balances } from './types.js';
 
 interface Props {
@@ -37,53 +37,79 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
   const [txPending, setTxPending] = useState<boolean>(false);
   const [txResult, setTxResult] = useState<TxResult | null>(null);
   
-  // Balances
+  // Balances - NOUVELLE STRUCTURE COMPLÈTE
   const [balances, setBalances] = useState<Balances>({
     rokoBalance: null,
     rokoFreeBalance: null,
     rokoReservedBalance: null,
     rokoTotalBalance: null,
     pwRokoBalance: null,
+    // Détails des balances pwROKO
+    freeAmount: null,
+    // Détails du staking via API Polkadot.js
+    bondedAmount: null,
+    unbondingAmount: null,
+    redeemableAmount: null,
+    // Conversion pwROKO -> ROKO
+    pendingConversionAmount: null,
+    readyConversionAmount: null,
+    // Unlock général
     pendingUnlockAmount: null,
     readyUnlockAmount: null,
+    // Legacy/autres
     stakedAmount: null,
-    delegatedAmount: null
+    delegatedAmount: null,
+    // Total calculé
+    totalOwned: null
   });
 
   const refreshBalances = useCallback(async () => {
     if (!account || !isConnected) return;
     
-    console.log('Refreshing all balances...');
+    console.log('🔄 Refreshing all balances with NEW structure...');
     
-    const rokoBalance = await getRokoBalance(account);
-    const detailedBalances = await getDetailedRokoBalances(account, api);
-    const pwRokoBalance = await getPwRokoBalance(account);
-    const unlockAmounts = await getUnlockAmounts(account);
-    
-    // Essaye les deux méthodes pour récupérer les montants stakés
-    let stakedAmount = await getStakedAmount(account);
-    
-    // Si la méthode EVM ne fonctionne pas, essaye la méthode Substrate
-    if (stakedAmount === '0' || stakedAmount.startsWith('Error:')) {
-      stakedAmount = await getStakedAmountSubstrate(account, api);
-      console.log('Debug: Using Substrate API for staked amount:', stakedAmount);
-    } else {
-      console.log('Debug: Using EVM precompile for staked amount:', stakedAmount);
+    try {
+      // Récupérer les balances ROKO (inchangé)
+      const rokoBalance = await getRokoBalance(account);
+      const detailedBalances = await getDetailedRokoBalances(account, api);
+      const pwRokoBalance = await getPwRokoBalance(account);
+      
+      // ✅ UTILISER LA NOUVELLE FONCTION pour récupérer toutes les balances pwROKO avec staking
+      const pwRokoBalances = await getAllPwRokoBalancesWithStaking(account, api);
+      
+      // Récupérer la délégation (ancien système, gardé pour compatibilité)
+      const delegatedAmount = await getDelegatedAmount(account);
+      
+      console.log('✅ New balance structure loaded:', pwRokoBalances);
+      
+      setBalances({
+        rokoBalance,
+        rokoFreeBalance: detailedBalances.free,
+        rokoReservedBalance: detailedBalances.reserved,
+        rokoTotalBalance: detailedBalances.total,
+        pwRokoBalance,
+        // Détails des balances pwROKO
+        freeAmount: pwRokoBalances.freeAmount,
+        // Détails du staking via API Polkadot.js
+        bondedAmount: pwRokoBalances.bondedAmount,
+        unbondingAmount: pwRokoBalances.unbondingAmount,
+        redeemableAmount: pwRokoBalances.redeemableAmount,
+        // Conversion pwROKO -> ROKO
+        pendingConversionAmount: pwRokoBalances.pendingConversionAmount,
+        readyConversionAmount: pwRokoBalances.readyConversionAmount,
+        // Unlock général
+        pendingUnlockAmount: pwRokoBalances.pendingUnlockAmount,
+        readyUnlockAmount: pwRokoBalances.readyUnlockAmount,
+        // Legacy/autres (pour compatibilité)
+        stakedAmount: pwRokoBalances.bondedAmount, // bondedAmount pour stakedAmount legacy
+        delegatedAmount,
+        // Total calculé
+        totalOwned: pwRokoBalances.totalOwned
+      });
+    } catch (error) {
+      console.error('❌ Error refreshing balances:', error);
+      setError(`Error loading balances: ${error}`);
     }
-    
-    const delegatedAmount = await getDelegatedAmount(account);
-    
-    setBalances({
-      rokoBalance,
-      rokoFreeBalance: detailedBalances.free,
-      rokoReservedBalance: detailedBalances.reserved,
-      rokoTotalBalance: detailedBalances.total,
-      pwRokoBalance,
-      pendingUnlockAmount: unlockAmounts.pending,
-      readyUnlockAmount: unlockAmounts.ready,
-      stakedAmount,
-      delegatedAmount
-    });
   }, [account, api, isConnected]);
 
   const handleWalletConnected = useCallback((walletAccount: string, contractInstances: ContractInstances, network: any) => {
@@ -105,10 +131,23 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
       rokoReservedBalance: null,
       rokoTotalBalance: null,
       pwRokoBalance: null,
+      // Détails des balances pwROKO
+      freeAmount: null,
+      // Détails du staking via API Polkadot.js
+      bondedAmount: null,
+      unbondingAmount: null,
+      redeemableAmount: null,
+      // Conversion pwROKO -> ROKO
+      pendingConversionAmount: null,
+      readyConversionAmount: null,
+      // Unlock général
       pendingUnlockAmount: null,
       readyUnlockAmount: null,
+      // Legacy/autres
       stakedAmount: null,
-      delegatedAmount: null
+      delegatedAmount: null,
+      // Total calculé
+      totalOwned: null
     });
   }, []);
 
@@ -130,8 +169,8 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
     <StyledDiv className={className}>
       <div className='evm-interface'>
         <div className='header'>
-          <h1>{t('EVM Interface - Ethereum Wallet')}</h1>
-          <p>{t('Connect your MetaMask wallet and interact with pwROKO via EVM')}</p>
+          <h1>{t('EVM Interface - Ethereum Wallet')} 🚀</h1>
+          <p>{t('Connect your MetaMask wallet and interact with pwROKO via EVM - NOUVELLE VERSION')}</p>
         </div>
 
         <WalletConnection
@@ -170,6 +209,7 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
             <Staking
               contracts={contracts}
               account={account}
+              readyWithdrawAmount={balances.redeemableAmount}
               onSuccess={handleTransactionSuccess}
               setError={setError}
               setTxResult={setTxResult}

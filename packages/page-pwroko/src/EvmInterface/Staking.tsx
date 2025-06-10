@@ -12,6 +12,7 @@ import type { ContractInstances, TxResult } from './types.js';
 interface Props {
   contracts: ContractInstances;
   account: string;
+  readyWithdrawAmount: string | null;
   onSuccess: () => void;
   setError: (error: string) => void;
   setTxResult: (result: TxResult | null) => void;
@@ -20,6 +21,7 @@ interface Props {
 function Staking ({ 
   contracts, 
   account, 
+  readyWithdrawAmount,
   onSuccess, 
   setError, 
   setTxResult 
@@ -122,6 +124,47 @@ function Staking ({
       onSuccess();
     } catch (error: any) {
       setError(`Error during unbond: ${error.message}`);
+      setTxResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setTxPending(false);
+    }
+  };
+
+  const handleWithdrawUnbonded = async () => {
+    if (!contracts) return;
+    
+    setError('');
+    setTxPending(true);
+    setTxResult(null);
+    
+    try {
+      // WITHDRAW_UNBONDED selector - pas de paramètres requis
+      const data = `0x00000004`;
+      
+      console.log('Withdraw unbonded data:', data);
+      
+      const tx = await contracts.signer.sendTransaction({
+        to: STAKING_PRECOMPILE_ADDRESS,
+        data: data,
+        gasLimit: 2000000, // Increased gas limit
+        gasPrice: ethers.utils.parseUnits('10', 'gwei') // Increased gas price
+      });
+      
+      const receipt = await tx.wait();
+      
+      setTxResult({
+        success: true,
+        hash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber,
+        message: 'Successfully withdrew unbonded pwROKO tokens'
+      });
+      
+      onSuccess();
+    } catch (error: any) {
+      setError(`Error during withdraw unbonded: ${error.message}`);
       setTxResult({
         success: false,
         error: error.message
@@ -239,12 +282,18 @@ function Staking ({
             }}
           />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
           <Button
             icon='minus-circle'
             label={txPending ? t('Transaction in progress...') : t('Unbond')}
             onClick={handleUnbond}
             isDisabled={txPending || !unbondAmount}
+          />
+          <Button
+            icon='check-circle'
+            label={t('Complete')}
+            onClick={handleWithdrawUnbonded}
+            isDisabled={txPending || !readyWithdrawAmount || parseFloat(readyWithdrawAmount) <= 0}
           />
         </div>
       </div>

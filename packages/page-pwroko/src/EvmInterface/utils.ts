@@ -115,6 +115,39 @@ export const getPwRokoBalance = async (address: string): Promise<string> => {
   }
 };
 
+export const getFreeAmount = async (address: string): Promise<string> => {
+  try {
+    if (!address || !window.ethereum) {
+      return '0';
+    }
+    
+    console.log('🆓 Getting FREE pwROKO balance for address:', address);
+    
+    const freeBalanceSelector = '0x70a08231';
+    const formattedAddress = '000000000000000000000000' + address.slice(2);
+    const data = `${freeBalanceSelector}${formattedAddress}`;
+    
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const result = await provider.call({
+      to: PWROKO_PRECOMPILE_ADDRESS,
+      data: data
+    });
+    
+    if (result === '0x' || !result) {
+      return '0';
+    }
+    
+    const balance = ethers.BigNumber.from(result);
+    const formattedBalance = ethers.utils.formatEther(balance);
+    
+    console.log('🆓 Free pwROKO balance:', formattedBalance);
+    return formattedBalance;
+  } catch (error: any) {
+    console.error('Error getting free pwROKO amount:', error);
+    return `Error: ${error.message}`;
+  }
+};
+
 export const getUnlockAmounts = async (address: string) => {
   try {
     if (!address || !window.ethereum) {
@@ -131,6 +164,10 @@ export const getUnlockAmounts = async (address: string) => {
     const pendingUnlockData = `${pendingUnlockSelector}${formattedAddress}`;
     const readyUnlockData = `${readyUnlockSelector}${formattedAddress}`;
     
+    console.log('🔍 DEBUG unlock amounts for:', address);
+    console.log('🔍 Pending unlock data:', pendingUnlockData);
+    console.log('🔍 Ready unlock data:', readyUnlockData);
+    
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const pendingUnlockResult = await provider.call({
       to: PWROKO_PRECOMPILE_ADDRESS,
@@ -140,6 +177,9 @@ export const getUnlockAmounts = async (address: string) => {
       to: PWROKO_PRECOMPILE_ADDRESS,
       data: readyUnlockData
     });
+    
+    console.log('🔍 Raw pending unlock result:', pendingUnlockResult);
+    console.log('🔍 Raw ready unlock result:', readyUnlockResult);
     
     let pending = '0';
     let ready = '0';
@@ -154,8 +194,12 @@ export const getUnlockAmounts = async (address: string) => {
       ready = ethers.utils.formatEther(readyUnlockBalance);
     }
     
+    console.log('⏳ Final pending unlock:', pending);
+    console.log('✅ Final ready unlock:', ready);
+    
     return { pending, ready };
   } catch (error: any) {
+    console.error('Error in getUnlockAmounts:', error);
     return {
       pending: `Error: ${error.message}`,
       ready: `Error: ${error.message}`
@@ -172,10 +216,8 @@ export const getStakedAmount = async (address: string): Promise<string> => {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const formattedAddress = '000000000000000000000000' + address.slice(2);
     
-    // Essaie plusieurs méthodes pour trouver les montants stakés
-    console.log('Debug: Attempting to get staked amount for address:', address);
+    console.log('🔒 Debug: Attempting to get staked amount for address:', address);
     
-    // Méthode 1: stakedBalanceOf du precompile pwroko (0x821f56a5)
     try {
       const stakedBalanceSelector = '0x821f56a5';
       const data1 = `${stakedBalanceSelector}${formattedAddress}`;
@@ -188,16 +230,15 @@ export const getStakedAmount = async (address: string): Promise<string> => {
       if (result1 && result1 !== '0x') {
         const balance = ethers.BigNumber.from(result1);
         const formattedBalance = ethers.utils.formatEther(balance);
-        console.log('Debug: stakedBalanceOf from pwroko precompile:', formattedBalance);
+        console.log('🔒 Debug: stakedBalanceOf from pwroko precompile:', formattedBalance);
         if (parseFloat(formattedBalance) > 0) {
           return formattedBalance;
         }
       }
     } catch (e) {
-      console.log('Debug: stakedBalanceOf failed:', e);
+      console.log('🔒 Debug: stakedBalanceOf failed:', e);
     }
     
-    // Méthode 2: staked_balance_of du precompile staking (0x00000005)
     try {
       const stakingBalanceSelector = '0x00000005';
       const data2 = `${stakingBalanceSelector}${formattedAddress}`;
@@ -210,23 +251,20 @@ export const getStakedAmount = async (address: string): Promise<string> => {
       if (result2 && result2 !== '0x') {
         const balance = ethers.BigNumber.from(result2);
         const formattedBalance = ethers.utils.formatEther(balance);
-        console.log('Debug: staked_balance_of from staking precompile:', formattedBalance);
+        console.log('🔒 Debug: staked_balance_of from staking precompile:', formattedBalance);
         if (parseFloat(formattedBalance) > 0) {
           return formattedBalance;
         }
       }
     } catch (e) {
-      console.log('Debug: staked_balance_of failed:', e);
+      console.log('🔒 Debug: staked_balance_of failed:', e);
     }
     
-    // Méthode 3: Vérifier les balances verrouillées directement
-    // TODO: Cela nécessiterait d'accéder aux storage du pallet pwroko via Substrate API
-    
-    console.log('Debug: No staked amount found, returning 0');
+    console.log('🔒 Debug: No staked amount found, returning 0');
     return '0';
     
   } catch (error: any) {
-    console.error('Debug: getStakedAmount error:', error);
+    console.error('🔒 Debug: getStakedAmount error:', error);
     return `Error: ${error.message}`;
   }
 };
@@ -237,9 +275,8 @@ export const getStakedAmountSubstrate = async (address: string, api: ApiPromise 
       return '0';
     }
     
-    console.log('Debug: Attempting to get staked amount via Substrate API for address:', address);
+    console.log('🔒 Debug: Attempting to get staked amount via Substrate API for address:', address);
     
-    // Récupère les montants verrouillés du pallet pwroko
     try {
       const lockedBalance = await api.query.pwRoko?.lockedBalances(address);
       const rewardLocked = await api.query.pwRoko?.rewardLockedBalances(address);
@@ -248,23 +285,22 @@ export const getStakedAmountSubstrate = async (address: string, api: ApiPromise 
       const reward = new BN((rewardLocked as any)?.toString() || '0');
       const totalLocked = locked.add(reward);
       
-      console.log('Debug: Substrate API results:');
+      console.log('🔒 Debug: Substrate API results:');
       console.log('- lockedBalance:', locked.toString());
       console.log('- rewardLocked:', reward.toString());
       console.log('- totalLocked:', totalLocked.toString());
       
-      // Convertir en format lisible (18 decimales)
       const divisor = new BN('1000000000000000000'); // 10^18
       const formattedBalance = totalLocked.div(divisor).toString() + '.' + 
         totalLocked.mod(divisor).toString().padStart(18, '0').replace(/0+$/, '').slice(0, 6);
       
       return formattedBalance.replace(/\.$/, '') || '0';
     } catch (e) {
-      console.log('Debug: Substrate API query failed:', e);
+      console.log('🔒 Debug: Substrate API query failed:', e);
       return '0';
     }
   } catch (error: any) {
-    console.error('Debug: getStakedAmountSubstrate error:', error);
+    console.error('🔒 Debug: getStakedAmountSubstrate error:', error);
     return `Error: ${error.message}`;
   }
 };
@@ -275,24 +311,65 @@ export const getDelegatedAmount = async (address: string): Promise<string> => {
       return 'Missing address';
     }
     
-    // TODO: Implémenter la récupération du montant délégué quand le precompile sera disponible
-    // Pour l'instant, retourner 0 car la délégation n'est pas encore implémentée en EVM
     return '0';
   } catch (error: any) {
     return `Error: ${error.message}`;
   }
 };
 
+export const getAllPwRokoBalances = async (address: string) => {
+  try {
+    console.log('💰 Getting ALL pwROKO balances for address:', address);
+    
+    const [freeAmount, stakedAmount, unlockAmounts] = await Promise.all([
+      getFreeAmount(address),
+      getStakedAmount(address),
+      getUnlockAmounts(address)
+    ]);
+    
+    const pendingUnlockAmount = unlockAmounts.pending;
+    const readyUnlockAmount = unlockAmounts.ready;
+    
+    const totalOwned = (
+      parseFloat(freeAmount || '0') + 
+      parseFloat(stakedAmount || '0') + 
+      parseFloat(pendingUnlockAmount || '0') +
+      parseFloat(readyUnlockAmount || '0')
+    ).toFixed(6).replace(/\.?0+$/, '');
+    
+    console.log('💰 Complete pwROKO balance breakdown:');
+    console.log('🆓 Free:', freeAmount);
+    console.log('🔒 Staked:', stakedAmount);
+    console.log('⏳ Pending unlock:', pendingUnlockAmount);
+    console.log('✅ Ready unlock:', readyUnlockAmount);
+    console.log('💎 TOTAL OWNED:', totalOwned);
+    
+    return {
+      freeAmount,
+      stakedAmount,
+      pendingUnlockAmount,
+      readyUnlockAmount,
+      totalOwned
+    };
+  } catch (error: any) {
+    console.error('Error getting all pwROKO balances:', error);
+    return {
+      freeAmount: `Error: ${error.message}`,
+      stakedAmount: `Error: ${error.message}`,
+      pendingUnlockAmount: `Error: ${error.message}`,
+      readyUnlockAmount: `Error: ${error.message}`,
+      totalOwned: '0'
+    };
+  }
+};
+
 export const buildNominateData = (validators: string[]): string => {
   console.log("Building nominate data for validators:", validators);
   
-  // Format simple: selector (4 bytes) + count (32 bytes) + addresses (32 bytes each, left-padded)
   const selector = '00000003';
   
-  // Count en format uint256 (32 bytes) avec ethers.utils.hexZeroPad
   const count = ethers.utils.hexZeroPad(`0x${validators.length.toString(16)}`, 32).slice(2);
   
-  // Chaque adresse doit être paddée à 32 bytes avec ethers.utils.hexZeroPad
   const paddedAddresses = validators.map(addr => {
     return ethers.utils.hexZeroPad(addr, 32).slice(2);
   }).join('');
@@ -329,20 +406,17 @@ export const nominateValidators = async (validators: string[], fromAddress: stri
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     
-    // Construire les données de la transaction
     const data = buildNominateData(validators);
     
-    // Préparer la transaction
     const transaction = {
       to: STAKING_PRECOMPILE_ADDRESS,
       data: data,
       from: fromAddress,
-      gasLimit: ethers.utils.hexlify(500000), // Limite de gas généreuse
+      gasLimit: ethers.utils.hexlify(500000),
     };
     
     console.log('Transaction prepared:', transaction);
     
-    // Envoyer la transaction
     const tx = await signer.sendTransaction(transaction);
     console.log('Transaction sent:', tx.hash);
     
@@ -350,5 +424,209 @@ export const nominateValidators = async (validators: string[], fromAddress: stri
   } catch (error: any) {
     console.error('Error nominating validators:', error);
     throw error;
+  }
+};
+
+// Nouvelle fonction pour récupérer les détails du staking via l'API Substrate
+export const getStakingDetails = async (address: string, api: ApiPromise | null) => {
+  try {
+    if (!address || !api) {
+      return {
+        bonded: '0',
+        unbonding: '0',
+        redeemable: '0',
+        staked: '0'
+      };
+    }
+
+    console.log('🔍 Getting staking details via api.derive.staking.account for:', address);
+
+    // Récupérer les informations de staking via l'API derive
+    const stakingInfo = await api.derive.staking.account(address);
+    
+    if (!stakingInfo) {
+      console.log('No staking info found');
+      return {
+        bonded: '0',
+        unbonding: '0',
+        redeemable: '0',
+        staked: '0'
+      };
+    }
+
+    const divisor = new BN('1000000000000000000'); // 10^18
+
+    // Balance bondée (active dans le ledger)
+    const bondedBalance = stakingInfo.stakingLedger?.active?.unwrap() || new BN(0);
+    const bondedFormatted = formatBN(bondedBalance, divisor);
+
+    // Balance en unbonding (somme de tous les unlocking)
+    const unbondingBalance = (stakingInfo.unlocking || [])
+      .filter(({ remainingEras, value }) => value.gt(new BN(0)) && remainingEras.gt(new BN(0)))
+      .reduce((acc, { value }) => acc.add(value), new BN(0));
+    const unbondingFormatted = formatBN(unbondingBalance, divisor);
+
+    // Balance redeemable (prête à être récupérée)
+    const redeemableBalance = stakingInfo.redeemable || new BN(0);
+    const redeemableFormatted = formatBN(redeemableBalance, divisor);
+
+    // Total staké = bonded + unbonding
+    const totalStaked = bondedBalance.add(unbondingBalance);
+    const stakedFormatted = formatBN(totalStaked, divisor);
+
+    console.log('🔍 Staking details breakdown:');
+    console.log('- Bonded (active):', bondedFormatted);
+    console.log('- Unbonding:', unbondingFormatted);
+    console.log('- Redeemable:', redeemableFormatted);
+    console.log('- Total Staked:', stakedFormatted);
+
+    return {
+      bonded: bondedFormatted,
+      unbonding: unbondingFormatted,
+      redeemable: redeemableFormatted,
+      staked: stakedFormatted
+    };
+
+  } catch (error: any) {
+    console.error('Error getting staking details:', error);
+    return {
+      bonded: `Error: ${error.message}`,
+      unbonding: `Error: ${error.message}`,
+      redeemable: `Error: ${error.message}`,
+      staked: `Error: ${error.message}`
+    };
+  }
+};
+
+// Helper pour formater les BN
+const formatBN = (balance: BN, divisor: BN): string => {
+  const formatted = balance.div(divisor).toString() + '.' + 
+    balance.mod(divisor).toString().padStart(18, '0').replace(/0+$/, '').slice(0, 6);
+  return formatted.replace(/\.$/, '') || '0';
+};
+
+// Fonction pour récupérer les détails de conversion pwROKO -> ROKO
+export const getConversionDetails = async (address: string, api: ApiPromise | null) => {
+  try {
+    if (!address || !api) {
+      return {
+        pendingConversion: '0',
+        readyConversion: '0'
+      };
+    }
+
+    console.log('🔄 Getting conversion details for:', address);
+
+    // Récupérer les informations de conversion via les storage du pallet pwRoko
+    try {
+      const conversionQueue = await api.query.pwRoko?.conversionQueue(address);
+      const readyConversions = await api.query.pwRoko?.readyConversions(address);
+
+      const divisor = new BN('1000000000000000000'); // 10^18
+
+      const pendingConversion = new BN((conversionQueue as any)?.toString() || '0');
+      const readyConversion = new BN((readyConversions as any)?.toString() || '0');
+
+      const pendingFormatted = formatBN(pendingConversion, divisor);
+      const readyFormatted = formatBN(readyConversion, divisor);
+
+      console.log('🔄 Conversion details:');
+      console.log('- Pending conversion:', pendingFormatted);
+      console.log('- Ready conversion:', readyFormatted);
+
+      return {
+        pendingConversion: pendingFormatted,
+        readyConversion: readyFormatted
+      };
+
+    } catch (e) {
+      console.log('🔄 Conversion queries failed, trying alternative approach:', e);
+      return {
+        pendingConversion: '0',
+        readyConversion: '0'
+      };
+    }
+
+  } catch (error: any) {
+    console.error('Error getting conversion details:', error);
+    return {
+      pendingConversion: `Error: ${error.message}`,
+      readyConversion: `Error: ${error.message}`
+    };
+  }
+};
+
+// Fonction mise à jour pour récupérer toutes les balances pwROKO avec staking
+export const getAllPwRokoBalancesWithStaking = async (address: string, api: ApiPromise | null) => {
+  try {
+    console.log('💰 Getting ALL pwROKO balances with staking for address:', address);
+    
+    const [
+      totalAmount,
+      stakingDetails,
+      unlockAmounts
+    ] = await Promise.all([
+      getPwRokoBalance(address), // Utiliser le total au lieu de getFreeAmount
+      getStakingDetails(address, api),
+      getUnlockAmounts(address)
+    ]);
+    
+    // Utiliser les détails du staking pour avoir des informations précises
+    const bondedAmount = stakingDetails.bonded;
+    const unbondingAmount = stakingDetails.unbonding;
+    const redeemableAmount = stakingDetails.redeemable;
+    
+    // Utiliser les vraies valeurs d'unlock (pwROKO -> ROKO)
+    const pendingUnlockAmount = unlockAmounts.pending;
+    const readyUnlockAmount = unlockAmounts.ready;
+    
+    // Calculer le montant libre = Total - tous les autres montants
+    const totalParsed = parseFloat(totalAmount || '0');
+    const bondedParsed = parseFloat(bondedAmount || '0');
+    const unbondingParsed = parseFloat(unbondingAmount || '0');
+    const redeemableParsed = parseFloat(redeemableAmount || '0');
+    const pendingUnlockParsed = parseFloat(pendingUnlockAmount || '0');
+    const readyUnlockParsed = parseFloat(readyUnlockAmount || '0');
+    
+    const calculatedFree = Math.max(0, totalParsed - bondedParsed - unbondingParsed - redeemableParsed - pendingUnlockParsed - readyUnlockParsed);
+    const freeAmount = calculatedFree.toFixed(6).replace(/\.?0+$/, '') || '0';
+    
+    const totalOwned = totalAmount; // Le total est déjà calculé correctement
+    
+    console.log('💰 Complete pwROKO balance breakdown with staking:');
+    console.log('💎 TOTAL OWNED:', totalOwned);
+    console.log('🆓 Free (calculated):', freeAmount);
+    console.log('🔒 Bonded (active staking):', bondedAmount);
+    console.log('⏳ Unbonding (staking):', unbondingAmount);
+    console.log('✅ Redeemable (staking):', redeemableAmount);
+    console.log('⏳ Pending unlock (pwROKO->ROKO):', pendingUnlockAmount);
+    console.log('✅ Ready unlock (pwROKO->ROKO):', readyUnlockAmount);
+    console.log('🧮 Calculation check:', totalParsed, '=', calculatedFree, '+', bondedParsed, '+', unbondingParsed, '+', redeemableParsed, '+', pendingUnlockParsed, '+', readyUnlockParsed);
+    
+    return {
+      freeAmount,
+      bondedAmount,
+      unbondingAmount,
+      redeemableAmount,
+      pendingUnlockAmount,
+      readyUnlockAmount,
+      // Garder les conversions pour compatibilité avec valeurs par défaut
+      pendingConversionAmount: '0',
+      readyConversionAmount: '0',
+      totalOwned
+    };
+  } catch (error: any) {
+    console.error('Error getting all pwROKO balances with staking:', error);
+    return {
+      freeAmount: `Error: ${error.message}`,
+      bondedAmount: `Error: ${error.message}`,
+      unbondingAmount: `Error: ${error.message}`,
+      redeemableAmount: `Error: ${error.message}`,
+      pendingUnlockAmount: `Error: ${error.message}`,
+      readyUnlockAmount: `Error: ${error.message}`,
+      pendingConversionAmount: '0',
+      readyConversionAmount: '0',
+      totalOwned: '0'
+    };
   }
 };
