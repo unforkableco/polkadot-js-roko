@@ -47,6 +47,10 @@ export interface Balances {
   
   // Total calculé
   totalOwned: string | null;
+  
+  // Informations de nomination
+  hasNominations: boolean;
+  nominatedValidators: string[];
 }
 
 declare global {
