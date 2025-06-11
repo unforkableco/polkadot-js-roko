@@ -31,6 +31,10 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
     readyUnlockAmount,
     totalOwned,
     
+    // Informations de nomination
+    hasNominations,
+    nominatedValidators,
+    
     // Legacy
     stakedAmount
   } = balances;
@@ -45,6 +49,9 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
     parseFloat(readyUnlockAmount || '0')
   ).toFixed(6).replace(/\.?0+$/, '');
 
+  // Calcul des unlock
+  const totalUnlockAmount = pendingUnlockAmount || '0'; // Le "total" est en fait le pending
+  
   // Calcul des pourcentages
   const calculatePercentage = (amount: string, total: string): string => {
     const amountNum = parseFloat(amount || '0');
@@ -75,7 +82,7 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
           fontSize: '1.1rem', 
           fontWeight: 'bold',
           color: 'var(--color-text)'
-        }}>💰 {t('Balances ROKO')}</h4>
+        }}>💰 {t('ROKO Balances')}</h4>
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -83,7 +90,7 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
           textAlign: 'center'
         }}>
           <BalanceCard
-            label={t('🟢 Libre')}
+            label={t('🟢 Free')}
             value={rokoFreeBalance || '0'}
             unit="ROKO"
             color="#4CAF50"
@@ -91,7 +98,7 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
             borderColor="rgba(76, 175, 80, 0.3)"
           />
           <BalanceCard
-            label={t('🟠 Réservé')}
+            label={t('🟠 Reserved')}
             value={rokoReservedBalance || '0'}
             unit="ROKO"
             color="#FF9800"
@@ -114,15 +121,14 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
         padding: '1rem',
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderRadius: '0.25rem',
-        border: '2px solid #4ecdc4'
       }}>
         <h4 style={{ 
           margin: '0 0 1rem 0', 
           textAlign: 'center', 
           fontSize: '1.2rem', 
           fontWeight: 'bold',
-          color: '#ff6b6b'
-        }}>⚡ {t('Balances pwROKO Détaillées')}</h4>
+          color: 'var(--color-text)'
+        }}>⚡ {t('pwROKO Balances')}</h4>
         
         <div style={{ 
           display: 'grid', 
@@ -132,82 +138,142 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
         }}>
           {/* Balance libre (disponible) */}
           <BalanceCard
-            label={t('🆓 Libre')}
+            label={t('🆓 Free')}
             value={freeAmount || '0'}
             unit="pwROKO"
             color="#4CAF50"
             backgroundColor="rgba(76, 175, 80, 0.1)"
             borderColor="rgba(76, 175, 80, 0.3)"
-            percentage={calculatePercentage(freeAmount || '0', calculatedTotal)}
           />
           
           {/* Balance bondée (staking actif) */}
           <BalanceCard
-            label={t('🔒 Bondé (Staking)')}
+            label={t('🔒 Bonded (Staking)')}
             value={bondedAmount || '0'}
             unit="pwROKO"
             color="#FF5722"
             backgroundColor="rgba(255, 87, 34, 0.1)"
             borderColor="rgba(255, 87, 34, 0.3)"
-            percentage={calculatePercentage(bondedAmount || '0', calculatedTotal)}
           />
           
           {/* En unbonding (période d'attente staking) */}
           <BalanceCard
-            label={t('⏳ Unbonding')}
+            label={t('⏳ Unbonding pending')}
             value={unbondingAmount || '0'}
             unit="pwROKO"
             color="#FF9800"
             backgroundColor="rgba(255, 152, 0, 0.1)"
             borderColor="rgba(255, 152, 0, 0.3)"
-            percentage={calculatePercentage(unbondingAmount || '0', calculatedTotal)}
           />
           
           {/* Prêt à récupérer du staking */}
           <BalanceCard
-            label={t('✅ Prêt à récupérer')}
+            label={t('✅ Ready to unstake')}
             value={redeemableAmount || '0'}
             unit="pwROKO"
             color="#4CAF50"
             backgroundColor="rgba(76, 175, 80, 0.1)"
             borderColor="rgba(76, 175, 80, 0.3)"
-            percentage={calculatePercentage(redeemableAmount || '0', calculatedTotal)}
           />
           
-          {/* Unlock en attente pwROKO -> ROKO */}
+          {/* Unlock en cours (total des requests) */}
           <BalanceCard
-            label={t('⏳ Unlock en cours')}
-            value={pendingUnlockAmount || '0'}
+            label={t('⏳ Unlock pending')}
+            value={totalUnlockAmount || '0'}
             unit="pwROKO"
-            color="#9C27B0"
-            backgroundColor="rgba(156, 39, 176, 0.1)"
-            borderColor="rgba(156, 39, 176, 0.3)"
-            percentage={calculatePercentage(pendingUnlockAmount || '0', calculatedTotal)}
+            color="#FF9800"
+            backgroundColor="rgba(255, 152, 0, 0.1)"
+            borderColor="rgba(255, 152, 0, 0.3)"
           />
           
           {/* Prêt à unlock */}
           <BalanceCard
-            label={t('✅ Prêt à unlock')}
+            label={t('✅ Ready to unlock')}
             value={readyUnlockAmount || '0'}
             unit="pwROKO"
-            color="#2196F3"
-            backgroundColor="rgba(33, 150, 243, 0.1)"
-            borderColor="rgba(33, 150, 243, 0.3)"
-            percentage={calculatePercentage(readyUnlockAmount || '0', calculatedTotal)}
+            color="#4CAF50"
+            backgroundColor="rgba(76, 175, 80, 0.1)"
+            borderColor="rgba(76, 175, 80, 0.3)"
           />
           
           {/* Total possédé */}
           <BalanceCard
-            label={t('💎 Total Possédé')}
+            label={t('💎 Total Owned')}
             value={calculatedTotal || '0'}
             unit="pwROKO"
-            color="#E91E63"
-            backgroundColor="rgba(233, 30, 99, 0.1)"
-            borderColor="rgba(233, 30, 99, 0.3)"
-            percentage="100.0"
+            color="#2196F3"
+            backgroundColor="rgba(33, 150, 243, 0.1)"
+            borderColor="rgba(33, 150, 243, 0.3)"
           />
         </div>
       </div>
+
+      {/* Section Informations de Nomination */}
+      {parseFloat(bondedAmount || '0') > 0 && (
+        <div style={{
+          padding: '1rem',
+          backgroundColor: hasNominations ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)',
+          borderRadius: '0.25rem',
+          border: `2px solid ${hasNominations ? '#4CAF50' : '#F44336'}`
+        }}>
+          <h4 style={{
+            margin: '0 0 1rem 0',
+            textAlign: 'center',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            color: hasNominations ? '#4CAF50' : '#F44336'
+          }}>
+            {hasNominations ? '✅ Nominated Validators' : '⚠️ No Nominations'}
+          </h4>
+          
+          {!hasNominations ? (
+            <div style={{
+              textAlign: 'center',
+              color: '#F44336',
+              fontSize: '0.9rem',
+              fontWeight: '500'
+            }}>
+              <p style={{ margin: '0 0 0.5rem' }}>
+                🚨 {t('Your bonded tokens generate NO rewards!')}
+              </p>
+              <p style={{ margin: '0', fontSize: '0.8rem', opacity: 0.8 }}>
+                {t('You must nominate validators to start earning rewards.')}
+              </p>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{
+                margin: '0 0 1rem',
+                color: '#4CAF50',
+                fontWeight: '500'
+              }}>
+                ✅ {t('Your tokens generate rewards via')} {nominatedValidators.length} {t('validator(s)')}
+              </p>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '0.5rem',
+                fontSize: '0.8rem'
+              }}>
+                {nominatedValidators.map((validator, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '0.5rem',
+                      backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                      borderRadius: '0.25rem',
+                      fontFamily: 'monospace',
+                      wordBreak: 'break-all'
+                    }}
+                  >
+                    {validator}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ textAlign: 'center', marginTop: '1rem' }}>
         <Button

@@ -203,21 +203,22 @@ function Staking ({
         {/* Amount Input */}
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-            {t('Bond Amount (pwROKO)')}
+            {t('Amount to bond:')}
           </label>
           <input
             type='number'
             value={bondAmount}
             onChange={(e) => setBondAmount(e.target.value)}
             min='0'
-            step='0.001'
-            placeholder='0.0'
+            step='0.000001'
+            placeholder={t("Enter amount in pwROKO")}
             style={{
               width: '100%',
-              padding: '0.75rem',
+              padding: '0.5rem',
               border: '1px solid var(--border-color)',
               borderRadius: '0.25rem',
-              fontSize: '1rem'
+              backgroundColor: 'var(--bg-input)',
+              color: 'var(--color-text)'
             }}
           />
         </div>
@@ -236,10 +237,10 @@ function Staking ({
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Button
-            icon='coins'
-            label={txPending ? t('Transaction in progress...') : t('Bond pwROKO')}
+            icon='lock'
+            label={txPending ? t('Transaction in progress...') : t('Bond')}
             onClick={handleBond}
-            isDisabled={txPending || !bondAmount}
+            isDisabled={txPending || !bondAmount || parseFloat(bondAmount) <= 0}
           />
         </div>
       </div>
@@ -264,37 +265,48 @@ function Staking ({
         </p>
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-            {t('Unbond Amount (pwROKO)')}
+            {t('Amount to unbond:')}
           </label>
           <input
             type='number'
             value={unbondAmount}
             onChange={(e) => setUnbondAmount(e.target.value)}
             min='0'
-            step='0.001'
-            placeholder='0.0'
+            step='0.000001'
+            placeholder={t("Enter amount in pwROKO")}
             style={{
               width: '100%',
-              padding: '0.75rem',
+              padding: '0.5rem',
               border: '1px solid var(--border-color)',
               borderRadius: '0.25rem',
-              fontSize: '1rem'
+              backgroundColor: 'var(--bg-input)',
+              color: 'var(--color-text)'
             }}
           />
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
           <Button
-            icon='minus-circle'
+            icon='unlock'
             label={txPending ? t('Transaction in progress...') : t('Unbond')}
             onClick={handleUnbond}
-            isDisabled={txPending || !unbondAmount}
+            isDisabled={txPending || !unbondAmount || parseFloat(unbondAmount) <= 0}
+            style={{ flex: 1, minWidth: '120px' }}
           />
-          <Button
-            icon='check-circle'
-            label={t('Complete')}
-            onClick={handleWithdrawUnbonded}
-            isDisabled={txPending || !readyWithdrawAmount || parseFloat(readyWithdrawAmount) <= 0}
-          />
+          
+          {readyWithdrawAmount && parseFloat(readyWithdrawAmount) > 0 && (
+            <Button
+              icon='check'
+              label={t('Complete')}
+              onClick={handleWithdrawUnbonded}
+              isDisabled={txPending}
+              style={{ 
+                flex: 1, 
+                minWidth: '120px',
+                backgroundColor: '#4CAF50',
+                borderColor: '#4CAF50'
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -435,7 +435,9 @@ export const getStakingDetails = async (address: string, api: ApiPromise | null)
         bonded: '0',
         unbonding: '0',
         redeemable: '0',
-        staked: '0'
+        staked: '0',
+        hasNominations: false,
+        nominatedValidators: []
       };
     }
 
@@ -450,7 +452,9 @@ export const getStakingDetails = async (address: string, api: ApiPromise | null)
         bonded: '0',
         unbonding: '0',
         redeemable: '0',
-        staked: '0'
+        staked: '0',
+        hasNominations: false,
+        nominatedValidators: []
       };
     }
 
@@ -474,17 +478,48 @@ export const getStakingDetails = async (address: string, api: ApiPromise | null)
     const totalStaked = bondedBalance.add(unbondingBalance);
     const stakedFormatted = formatBN(totalStaked, divisor);
 
+    // Récupérer les validateurs nominés
+    const nominatedValidators: string[] = [];
+    let hasNominations = false;
+
+    // Essayer d'accéder aux nominations via stakingLedger ou autres propriétés
+    try {
+      // Debug pour voir la structure réelle
+      console.log('🔍 stakingInfo structure:', Object.keys(stakingInfo));
+      console.log('🔍 stakingInfo.stakingLedger:', stakingInfo.stakingLedger);
+      
+      // Vérifier s'il y a des nominations via l'API directe
+      if (api && address) {
+        const nominations = await api.query.staking.nominators(address);
+        if (nominations && nominations.isSome) {
+          const nominatorData = nominations.unwrap();
+          if (nominatorData.targets && nominatorData.targets.length > 0) {
+            hasNominations = true;
+            nominatorData.targets.forEach((target: any) => {
+              nominatedValidators.push(target.toString());
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Error fetching nominations:', e);
+    }
+
     console.log('🔍 Staking details breakdown:');
     console.log('- Bonded (active):', bondedFormatted);
     console.log('- Unbonding:', unbondingFormatted);
     console.log('- Redeemable:', redeemableFormatted);
     console.log('- Total Staked:', stakedFormatted);
+    console.log('- Has nominations:', hasNominations);
+    console.log('- Nominated validators:', nominatedValidators);
 
     return {
       bonded: bondedFormatted,
       unbonding: unbondingFormatted,
       redeemable: redeemableFormatted,
-      staked: stakedFormatted
+      staked: stakedFormatted,
+      hasNominations,
+      nominatedValidators
     };
 
   } catch (error: any) {
@@ -493,7 +528,9 @@ export const getStakingDetails = async (address: string, api: ApiPromise | null)
       bonded: `Error: ${error.message}`,
       unbonding: `Error: ${error.message}`,
       redeemable: `Error: ${error.message}`,
-      staked: `Error: ${error.message}`
+      staked: `Error: ${error.message}`,
+      hasNominations: false,
+      nominatedValidators: []
     };
   }
 };
@@ -575,6 +612,8 @@ export const getAllPwRokoBalancesWithStaking = async (address: string, api: ApiP
     const bondedAmount = stakingDetails.bonded;
     const unbondingAmount = stakingDetails.unbonding;
     const redeemableAmount = stakingDetails.redeemable;
+    const hasNominations = stakingDetails.hasNominations;
+    const nominatedValidators = stakingDetails.nominatedValidators;
     
     // Utiliser les vraies valeurs d'unlock (pwROKO -> ROKO)
     const pendingUnlockAmount = unlockAmounts.pending;
@@ -616,7 +655,9 @@ export const getAllPwRokoBalancesWithStaking = async (address: string, api: ApiP
       // Garder les conversions pour compatibilité avec valeurs par défaut
       pendingConversionAmount: '0',
       readyConversionAmount: '0',
-      totalOwned
+      totalOwned,
+      hasNominations,
+      nominatedValidators
     };
   } catch (error: any) {
     console.error('Error getting all pwROKO balances with staking:', error);
@@ -629,7 +670,9 @@ export const getAllPwRokoBalancesWithStaking = async (address: string, api: ApiP
       readyUnlockAmount: `Error: ${error.message}`,
       pendingConversionAmount: '0',
       readyConversionAmount: '0',
-      totalOwned: '0'
+      totalOwned: '0',
+      hasNominations: false,
+      nominatedValidators: []
     };
   }
 };

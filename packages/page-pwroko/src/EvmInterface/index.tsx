@@ -59,9 +59,12 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
     // Legacy/autres
     stakedAmount: null,
     delegatedAmount: null,
-    // Total calculé
-    totalOwned: null
-  });
+          // Total calculé
+      totalOwned: null,
+      // Informations de nomination
+      hasNominations: false,
+      nominatedValidators: []
+    });
 
   const refreshBalances = useCallback(async () => {
     if (!account || !isConnected) return;
@@ -104,7 +107,10 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
         stakedAmount: pwRokoBalances.bondedAmount, // bondedAmount pour stakedAmount legacy
         delegatedAmount,
         // Total calculé
-        totalOwned: pwRokoBalances.totalOwned
+        totalOwned: pwRokoBalances.totalOwned,
+        // Informations de nomination
+        hasNominations: pwRokoBalances.hasNominations,
+        nominatedValidators: pwRokoBalances.nominatedValidators
       });
     } catch (error) {
       console.error('❌ Error refreshing balances:', error);
@@ -147,7 +153,10 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
       stakedAmount: null,
       delegatedAmount: null,
       // Total calculé
-      totalOwned: null
+      totalOwned: null,
+      // Informations de nomination
+      hasNominations: false,
+      nominatedValidators: []
     });
   }, []);
 
@@ -169,8 +178,8 @@ function EvmInterface ({ className }: Props): React.ReactElement<Props> {
     <StyledDiv className={className}>
       <div className='evm-interface'>
         <div className='header'>
-          <h1>{t('EVM Interface - Ethereum Wallet')} 🚀</h1>
-          <p>{t('Connect your MetaMask wallet and interact with pwROKO via EVM - NOUVELLE VERSION')}</p>
+        <h1>{'EVM Interface - Ethereum Wallet 🚀'}</h1>
+        <p>{t('Connect your MetaMask wallet and interact with pwROKO via EVM')}</p>
         </div>
 
         <WalletConnection
