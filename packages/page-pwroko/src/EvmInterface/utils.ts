@@ -588,7 +588,10 @@ export const getAllPwRokoBalancesWithStaking = async (address: string, api: ApiP
     const pendingUnlockParsed = parseFloat(pendingUnlockAmount || '0');
     const readyUnlockParsed = parseFloat(readyUnlockAmount || '0');
     
-    const calculatedFree = Math.max(0, totalParsed - bondedParsed - unbondingParsed - redeemableParsed - pendingUnlockParsed - readyUnlockParsed);
+    // CORRECTION: "Prêt à unlock" ne doit PAS être soustrait du libre
+    // Libre = Total - (Bondé + Unbonding + Redeemable + Unlock en cours)
+    // "Prêt à unlock" est disponible pour le calcul du libre
+    const calculatedFree = Math.max(0, totalParsed - bondedParsed - unbondingParsed - redeemableParsed - pendingUnlockParsed);
     const freeAmount = calculatedFree.toFixed(6).replace(/\.?0+$/, '') || '0';
     
     const totalOwned = totalAmount; // Le total est déjà calculé correctement
@@ -601,7 +604,7 @@ export const getAllPwRokoBalancesWithStaking = async (address: string, api: ApiP
     console.log('✅ Redeemable (staking):', redeemableAmount);
     console.log('⏳ Pending unlock (pwROKO->ROKO):', pendingUnlockAmount);
     console.log('✅ Ready unlock (pwROKO->ROKO):', readyUnlockAmount);
-    console.log('🧮 Calculation check:', totalParsed, '=', calculatedFree, '+', bondedParsed, '+', unbondingParsed, '+', redeemableParsed, '+', pendingUnlockParsed, '+', readyUnlockParsed);
+    console.log('🧮 Calculation check:', totalParsed, '=', calculatedFree, '+', bondedParsed, '+', unbondingParsed, '+', redeemableParsed, '+', pendingUnlockParsed, '+ [readyUnlock not subtracted:', readyUnlockParsed, ']');
     
     return {
       freeAmount,
