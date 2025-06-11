@@ -144,7 +144,6 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
             color="#4CAF50"
             backgroundColor="rgba(76, 175, 80, 0.1)"
             borderColor="rgba(76, 175, 80, 0.3)"
-            percentage={calculatePercentage(freeAmount || '0', calculatedTotal)}
           />
           
           {/* Balance bondée (staking actif) */}
@@ -210,13 +209,12 @@ function BalanceDisplay ({ balances, onRefresh }: Props): React.ReactElement<Pro
           
           {/* Total possédé */}
           <BalanceCard
-            label={t('💎 Total Possédé')}
+            label={t('💎 Total Owned')}
             value={calculatedTotal || '0'}
             unit="pwROKO"
-            color="#E91E63"
-            backgroundColor="rgba(233, 30, 99, 0.1)"
-            borderColor="rgba(233, 30, 99, 0.3)"
-            percentage="100.0"
+            color="#2196F3"
+            backgroundColor="rgba(33, 150, 243, 0.1)"
+            borderColor="rgba(33, 150, 243, 0.3)"
           />
         </div>
       </div>
