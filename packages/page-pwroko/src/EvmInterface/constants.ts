@@ -4,14 +4,14 @@
 // pwROKO network configuration
 export const PWROKO_NETWORK_CONFIG = {
   chainId: '0x1BA', // 442 in hex - ROKO chain ID
-  chainName: 'pwROKO Development',
-  rpcUrls: ['http://127.0.0.1:8545'], // EVM RPC endpoint
+  chainName: 'ROKO-testnet',
+  rpcUrls: ['https://roko-testnet.ntfork.com/'], // ROKO testnet RPC endpoint
   nativeCurrency: {
     name: 'ROKO',
     symbol: 'ROKO',
     decimals: 18
   },
-  blockExplorerUrls: ['http://127.0.0.1:8545'] // Optional
+  blockExplorerUrls: ['https://roko-testnet.ntfork.com/'] // Optional
 };
 
 // Test accounts for pwroko (using ALITH and BALTATHAR)
