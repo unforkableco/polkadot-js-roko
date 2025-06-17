@@ -7,6 +7,40 @@ import type { ApiPromise } from '@polkadot/api';
 
 import { PWROKO_PRECOMPILE_ADDRESS, STAKING_PRECOMPILE_ADDRESS } from './constants.js';
 
+// Cache for precompile availability check
+let precompileAvailabilityCache: boolean | null = null;
+
+// Helper function to check if pwROKO precompiles are available
+const isPwRokoPrecompileAvailable = async (): Promise<boolean> => {
+  // Return cached result if already checked
+  if (precompileAvailabilityCache !== null) {
+    return precompileAvailabilityCache;
+  }
+  
+  try {
+    if (!window.ethereum) {
+      precompileAvailabilityCache = false;
+      return false;
+    }
+    
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    
+    // Simple test call to check if precompile exists
+    await provider.call({
+      to: PWROKO_PRECOMPILE_ADDRESS,
+      data: '0x70a08231000000000000000000000000f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac' // balanceOf test call
+    });
+    
+    console.log('✅ pwROKO precompiles detected and available');
+    precompileAvailabilityCache = true;
+    return true;
+  } catch (error: any) {
+    console.log('ℹ️ pwROKO precompiles not available on this network - using ROKO-only mode');
+    precompileAvailabilityCache = false;
+    return false;
+  }
+};
+
 export const getRokoBalance = async (address: string): Promise<string> => {
   try {
     if (!address || !window.ethereum) {
@@ -90,7 +124,13 @@ export const getDetailedRokoBalances = async (address: string, api: ApiPromise |
 export const getPwRokoBalance = async (address: string): Promise<string> => {
   try {
     if (!address || !window.ethereum) {
-      return 'Missing address or ethereum provider';
+      return '0';
+    }
+    
+    // Check if pwROKO precompiles are available
+    const isAvailable = await isPwRokoPrecompileAvailable();
+    if (!isAvailable) {
+      return '0'; // Return 0 instead of error if precompiles not available
     }
     
     const functionSelector = '0x70a08231';
@@ -111,13 +151,20 @@ export const getPwRokoBalance = async (address: string): Promise<string> => {
     const formattedBalance = ethers.utils.formatEther(balance);
     return formattedBalance;
   } catch (error: any) {
-    return `Error: ${error.message}`;
+    console.log('ℹ️ pwROKO balance not available:', error.message);
+    return '0'; // Return 0 instead of error message
   }
 };
 
 export const getFreeAmount = async (address: string): Promise<string> => {
   try {
     if (!address || !window.ethereum) {
+      return '0';
+    }
+    
+    // Check if pwROKO precompiles are available
+    const isAvailable = await isPwRokoPrecompileAvailable();
+    if (!isAvailable) {
       return '0';
     }
     
@@ -143,8 +190,8 @@ export const getFreeAmount = async (address: string): Promise<string> => {
     console.log('🆓 Free pwROKO balance:', formattedBalance);
     return formattedBalance;
   } catch (error: any) {
-    console.error('Error getting free pwROKO amount:', error);
-    return `Error: ${error.message}`;
+    console.log('ℹ️ Free pwROKO amount not available:', error.message);
+    return '0';
   }
 };
 
@@ -152,8 +199,17 @@ export const getUnlockAmounts = async (address: string) => {
   try {
     if (!address || !window.ethereum) {
       return {
-        pending: 'Missing address or ethereum provider',
-        ready: 'Missing address or ethereum provider'
+        pending: '0',
+        ready: '0'
+      };
+    }
+    
+    // Check if pwROKO precompiles are available
+    const isAvailable = await isPwRokoPrecompileAvailable();
+    if (!isAvailable) {
+      return {
+        pending: '0',
+        ready: '0'
       };
     }
     
@@ -199,10 +255,10 @@ export const getUnlockAmounts = async (address: string) => {
     
     return { pending, ready };
   } catch (error: any) {
-    console.error('Error in getUnlockAmounts:', error);
+    console.log('ℹ️ pwROKO unlock amounts not available:', error.message);
     return {
-      pending: `Error: ${error.message}`,
-      ready: `Error: ${error.message}`
+      pending: '0',
+      ready: '0'
     };
   }
 };

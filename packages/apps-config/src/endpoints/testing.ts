@@ -801,6 +801,18 @@ export const testChains: Omit<EndpointOption, 'teleport'>[] = [
     }
   },
   {
+    info: 'roko-testnet',
+    homepage: 'https://roko-testnet.ntfork.com/',
+    providers: {
+      'ROKO Testnet': 'wss://roko-testnet.ntfork.com/'
+    },
+    text: 'ROKO Testnet',
+    ui: {
+      color: '#FF6B35',
+      logo: nodesSubstrateHexagonSVG
+    }
+  },
+  {
     info: 'sherpax',
     providers: {
       // Chainx: 'wss://sherpax-testnet.chainx.org' // https://github.com/polkadot-js/apps/issues/9672
