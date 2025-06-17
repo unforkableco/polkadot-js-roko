@@ -1,14 +1,15 @@
 // Copyright 2017-2025 @polkadot/app-staking authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
+import type { DeriveBalancesAll } from '@polkadot/api-derive/types';
 import type { BN } from '@polkadot/util';
 
 import React, { useRef, useState } from 'react';
 
 import useAmountError from '@polkadot/app-staking2/Pools/useAmountError';
 import { Dropdown, InputBalance, Modal, TxButton } from '@polkadot/react-components';
-import { useApi } from '@polkadot/react-hooks';
-import { BalanceFree } from '@polkadot/react-query';
+import { useApi, useCall } from '@polkadot/react-hooks';
+import { BalanceFree, FormatBalance } from '@polkadot/react-query';
 import { BN_ZERO } from '@polkadot/util';
 
 import { useTranslation } from '../../translate.js';
@@ -29,6 +30,8 @@ function BondExtra ({ className, controllerId, onClose, poolId }: Props): React.
   const [type, setType] = useState(DEFAULT_TYPE);
   const [amount, setAmount] = useState<BN | undefined>();
   const isAmountError = useAmountError(controllerId, amount, BN_ZERO);
+  const controllerBalance = useCall<DeriveBalancesAll>(api.derive.balances?.all, [controllerId]);
+  const controllerPwRokoBalance = useCall<any>(api.query.pwRoko?.balances, [controllerId]);
 
   const typeRef = useRef([
     { text: t('Free balance'), value: 'free' },
@@ -60,12 +63,14 @@ function BondExtra ({ className, controllerId, onClose, poolId }: Props): React.
               isError={isAmountError}
               label={t('additional free funds to bond')}
               labelExtra={
-                <BalanceFree
-                  label={<span className='label'>{t('balance')}</span>}
-                  params={controllerId}
+                <FormatBalance
+                  label={<span className='label'>{t('balance (pwROKO)')}</span>}
+                  formatIndex={1}
+                  value={controllerPwRokoBalance}
                 />
               }
               onChange={setAmount}
+              siSymbol='pwROKO'
             />
           )}
         </Modal.Columns>
