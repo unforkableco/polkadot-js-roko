@@ -51,6 +51,7 @@ function Rebond ({ controllerId, onClose, stakingInfo, stashId }: Props): React.
               isError={!maxAdditional || maxAdditional.eqn(0) || maxAdditional.gt(startBalance)}
               label={t('rebonded amount')}
               onChange={setMaxAdditional}
+              siSymbol='pwROKO'
             />
           </Modal.Columns>
         )}

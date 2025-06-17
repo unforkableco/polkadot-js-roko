@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Dropdown, InputAddress, InputBalance, MarkError, Modal, Static } from '@polkadot/react-components';
 import { useApi, useCall } from '@polkadot/react-hooks';
-import { BalanceFree, BlockToTime } from '@polkadot/react-query';
+import { BalanceFree, BlockToTime, FormatBalance } from '@polkadot/react-query';
 import { BN_ZERO } from '@polkadot/util';
 
 import { useTranslation } from '../../translate.js';
@@ -47,6 +47,7 @@ function Bond ({ className = '', isNominating, minNominated, minNominatorBond, m
   const [stashId, setStashId] = useState<string | null>(null);
   const [startBalance, setStartBalance] = useState<BN | null>(null);
   const stashBalance = useCall<DeriveBalancesAll>(api.derive.balances?.all, [stashId]);
+  const pwRokoBalance = useCall<any>(api.query.pwRoko?.balances, [stashId]);
   const destBalance = useCall<DeriveBalancesAll>(api.derive.balances?.all, [destAccount]);
   const bondedBlocks = useUnbondDuration();
 
@@ -66,12 +67,14 @@ function Bond ({ className = '', isNominating, minNominated, minNominatorBond, m
   );
 
   useEffect((): void => {
-    stashBalance && setStartBalance(
-      stashBalance.freeBalance.gt(api.consts.balances.existentialDeposit)
-        ? stashBalance.freeBalance.sub(api.consts.balances.existentialDeposit)
-        : BN_ZERO
-    );
-  }, [api, stashBalance]);
+    if (pwRokoBalance) {
+      setStartBalance(
+        pwRokoBalance.gt(api.consts.balances.existentialDeposit)
+          ? pwRokoBalance.sub(api.consts.balances.existentialDeposit)
+          : BN_ZERO
+      );
+    }
+  }, [api, pwRokoBalance]);
 
   useEffect((): void => {
     setStartBalance(null);
@@ -165,12 +168,14 @@ function Bond ({ className = '', isNominating, minNominated, minNominatorBond, m
             isError={!hasValue || !!amountError?.error}
             label={t('value bonded')}
             labelExtra={
-              <BalanceFree
-                label={<span className='label'>{t('balance')}</span>}
-                params={stashId}
+              <FormatBalance
+                label={<span className='label'>{t('balance (pwROKO)')}</span>}
+                formatIndex={1}
+                value={pwRokoBalance}
               />
             }
             onChange={setAmount}
+            siSymbol='pwROKO'
           />
           <InputValidateAmount
             controllerId={controllerId}

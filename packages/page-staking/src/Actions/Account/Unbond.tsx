@@ -54,6 +54,7 @@ function Unbond ({ controllerId, onClose, stakingLedger, stashId }: Props): Reac
             }
             maxValue={maxBalance}
             onChange={setMaxUnbond}
+            siSymbol='pwROKO'
             withMax
           />
           {bondedBlocks?.gtn(0) && (
