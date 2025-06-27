@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Deployment script for feature/evm-interface branch
+# Deployment script for master branch
 # Run this script on your EC2 instance
 
 set -e
 
 # Configuration variables
 REPO_URL="https://github.com/unforkableco/polkadot-js-roko.git"
-BRANCH="feature/evm-interface"
+BRANCH="master"
 APP_NAME="roko-explorer"
 CONTAINER_NAME="roko-explorer-container"
 PORT=80

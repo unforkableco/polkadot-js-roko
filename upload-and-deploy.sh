@@ -18,7 +18,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}🚀 Starting deployment of feature/evm-interface branch to EC2...${NC}"
+echo -e "${GREEN}🚀 Starting deployment of master branch to EC2...${NC}"
 
 # Check if key file exists
 if [ ! -f "$EC2_KEY" ]; then
