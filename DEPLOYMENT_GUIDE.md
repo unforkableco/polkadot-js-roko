@@ -1,6 +1,6 @@
-# Polkadot-JS Apps Deployment Guide
+# Roko Explorer Deployment Guide (Docker-based)
 
-This guide covers deploying the Polkadot-JS Apps to EC2 with HTTPS and custom domain configuration.
+This guide covers deploying the Roko Explorer (Polkadot-JS Apps with EVM integration) to EC2 using Docker containers.
 
 ## Prerequisites
 
@@ -8,10 +8,11 @@ This guide covers deploying the Polkadot-JS Apps to EC2 with HTTPS and custom do
 - SSH access with key file: `/home/dev/temp/unforkable-official.pem`
 - Domain: `ntfork.com` hosted on Route53
 - RPC node accessible at: `13.49.127.240:9944`
+- Docker installed on EC2 instance
 
 ## Quick Deployment
 
-### Step 1: Deploy to EC2
+### Step 1: Deploy to EC2 (Docker-based)
 
 Run the automated deployment script:
 
@@ -21,12 +22,24 @@ chmod +x upload-and-deploy.sh
 ```
 
 This will:
-- Upload the app files to EC2
-- Install all dependencies (Node.js, Yarn, Nginx, Certbot)
-- Build the app with the correct RPC endpoint
-- Configure Nginx with SSL-ready setup
+- Upload the Docker deployment script to EC2
+- Clone the latest feature/evm-interface branch
+- Build a Docker image with all dependencies
+- Run the containerized app on port 80
+- Configure the correct RPC endpoint (13.49.127.240:9944)
 
-### Step 2: Create DNS Record in Route53
+### Step 2: Verify Docker Deployment
+
+Check that the container is running:
+
+```bash
+ssh -i /home/dev/temp/unforkable-official.pem ubuntu@16.16.67.171
+docker ps
+```
+
+You should see `roko-explorer-container` running.
+
+### Step 3: Create DNS Record in Route53 (if using domain)
 
 1. **Access AWS Route53 Console**
    - Go to AWS Console → Route53 → Hosted Zones
@@ -49,88 +62,109 @@ This will:
    # Should return: 16.16.67.171
    ```
 
-### Step 3: Setup SSL Certificate
+### Step 4: Setup SSL Certificate (Optional - for HTTPS)
 
-SSH to your EC2 instance and run:
+For HTTPS access with your domain, you'll need to set up a reverse proxy:
 
 ```bash
 ssh -i /home/dev/temp/unforkable-official.pem ubuntu@16.16.67.171
 
-# Once connected, run:
+# Install nginx for reverse proxy
+sudo apt update
+sudo apt install -y nginx certbot python3-certbot-nginx
+
+# Create nginx configuration for reverse proxy
+sudo tee /etc/nginx/sites-available/roko-explorer.ntfork.com > /dev/null <<EOF
+server {
+    listen 80;
+    server_name roko-explorer.ntfork.com;
+    
+    location / {
+        proxy_pass http://localhost:80;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/roko-explorer.ntfork.com /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Get SSL certificate
 sudo certbot --nginx -d roko-explorer.ntfork.com
 ```
 
-Follow the prompts:
-- Enter email address for certificate notifications
-- Agree to terms
-- Choose whether to share email with EFF
-- Certbot will automatically configure nginx with SSL
-
-### Step 4: Verify Deployment
-
-1. **Check HTTP redirect** (should redirect to HTTPS):
-   ```bash
-   curl -I http://roko-explorer.ntfork.com
-   ```
-
-2. **Check HTTPS access**:
-   ```bash
-   curl -I https://roko-explorer.ntfork.com
-   ```
-
-3. **Access your app**: https://roko-explorer.ntfork.com
-
 ## Configuration Details
 
-### RPC Endpoint Configuration
+### Docker Container Configuration
 
-The app is configured to connect to: `ws://13.49.127.240:9944`
+- **Image**: Built from `docker/Dockerfile`
+- **Container Name**: `roko-explorer-container`
+- **Port Mapping**: 80:80 (host:container)
+- **Restart Policy**: `unless-stopped`
+- **RPC Endpoint**: `ws://13.49.127.240:9944`
 
-This is set via the `WS_URL` environment variable during build time in the deployment script.
+### Branch and Features
 
-### Nginx Configuration
+- **Branch**: `feature/evm-interface`
+- **Features**: 
+  - EVM integration
+  - Fixed token symbol display in staking interface
+  - Custom Roko chain configuration
 
-The nginx configuration includes:
-- HTTP to HTTPS redirect
-- SSL/TLS termination
-- Security headers
-- Gzip compression
-- Static asset caching
-- Client-side routing support
-- WebSocket proxy for RPC connections
+### Access Points
 
-### Directory Structure on EC2
+- **Direct IP**: http://16.16.67.171
+- **Domain (if configured)**: https://roko-explorer.ntfork.com
 
+## Management Commands
+
+### View Application Logs
+```bash
+ssh -i /home/dev/temp/unforkable-official.pem ubuntu@16.16.67.171
+docker logs -f roko-explorer-container
 ```
-/var/www/polkadot-apps/          # Main app directory
-├── packages/apps/build/         # Built app files (served by nginx)
-├── node_modules/               # Dependencies
-└── ...                        # Source files
 
-/etc/nginx/sites-available/     # Nginx configuration
-└── roko-explorer.ntfork.com
-
-/etc/nginx/sites-enabled/       # Enabled sites
-└── roko-explorer.ntfork.com -> ../sites-available/roko-explorer.ntfork.com
+### Restart Application
+```bash
+ssh -i /home/dev/temp/unforkable-official.pem ubuntu@16.16.67.171
+docker restart roko-explorer-container
 ```
+
+### Stop Application
+```bash
+ssh -i /home/dev/temp/unforkable-official.pem ubuntu@16.16.67.171
+docker stop roko-explorer-container
+```
+
+### Update to Latest Version
+Simply run the deployment script again:
+```bash
+./upload-and-deploy.sh
+```
+
+This will:
+- Pull latest changes from feature/evm-interface
+- Rebuild the Docker image
+- Replace the running container
 
 ## Manual Deployment (Alternative)
 
 If you prefer manual deployment:
 
-### 1. Upload Files
-
+### 1. Copy deployment script to EC2
 ```bash
-rsync -avz -e "ssh -i /home/dev/temp/unforkable-official.pem" \
-  --exclude 'node_modules' --exclude '.git' --exclude 'build' \
-  . ubuntu@16.16.67.171:/home/ubuntu/polkadot-apps/
+scp -i /home/dev/temp/unforkable-official.pem deploy.sh ubuntu@16.16.67.171:~/
 ```
 
-### 2. SSH and Deploy
-
+### 2. SSH and run deployment
 ```bash
 ssh -i /home/dev/temp/unforkable-official.pem ubuntu@16.16.67.171
-cd /home/ubuntu/polkadot-apps
 chmod +x deploy.sh
 ./deploy.sh
 ```
@@ -139,35 +173,39 @@ chmod +x deploy.sh
 
 ### Common Issues
 
-1. **Build Fails - Out of Memory**
+1. **Container won't start**
    ```bash
-   # Increase swap space
+   docker logs roko-explorer-container
+   docker ps -a  # Check if container exists but stopped
+   ```
+
+2. **Port 80 already in use**
+   ```bash
+   sudo netstat -tulpn | grep :80
+   # Stop conflicting service or change port in deploy.sh
+   ```
+
+3. **Docker not installed on EC2**
+   ```bash
+   ssh -i /home/dev/temp/unforkable-official.pem ubuntu@16.16.67.171
+   sudo apt update
+   sudo apt install -y docker.io
+   sudo systemctl start docker
+   sudo systemctl enable docker
+   sudo usermod -aG docker ubuntu
+   # Log out and back in
+   ```
+
+4. **Build failures due to memory**
+   ```bash
+   # Increase swap space on EC2
    sudo fallocate -l 2G /swapfile
    sudo chmod 600 /swapfile
    sudo mkswap /swapfile
    sudo swapon /swapfile
    ```
 
-2. **Nginx Permission Denied**
-   ```bash
-   # Check file permissions
-   sudo chown -R www-data:www-data /var/www/polkadot-apps/packages/apps/build/
-   sudo chmod -R 755 /var/www/polkadot-apps/packages/apps/build/
-   ```
-
-3. **SSL Certificate Issues**
-   ```bash
-   # Check nginx configuration
-   sudo nginx -t
-   
-   # Restart nginx
-   sudo systemctl restart nginx
-   
-   # Check certificate status
-   sudo certbot certificates
-   ```
-
-4. **RPC Connection Issues**
+5. **RPC Connection Issues**
    ```bash
    # Test RPC endpoint
    curl -H "Content-Type: application/json" \
@@ -175,82 +213,59 @@ chmod +x deploy.sh
         http://13.49.127.240:9944
    ```
 
-### Logs
+### Container Management
 
-- **Nginx logs**: `/var/log/nginx/error.log`
-- **Certbot logs**: `/var/log/letsencrypt/letsencrypt.log`
-- **App build logs**: Check terminal output during deployment
+```bash
+# View all containers
+docker ps -a
+
+# Remove stopped containers
+docker container prune
+
+# Remove unused images
+docker image prune
+
+# Complete cleanup
+docker system prune -a
+```
 
 ## Security Considerations
 
 1. **Firewall Configuration**
    ```bash
    # Allow HTTP/HTTPS traffic
-   sudo ufw allow 'Nginx Full'
+   sudo ufw allow 80
+   sudo ufw allow 443
    sudo ufw allow ssh
    sudo ufw enable
    ```
 
-2. **Regular Updates**
+2. **Container Security**
+   - Container runs as non-root user
+   - Only necessary ports exposed
+   - Automatic restart on failure
+
+3. **Regular Updates**
    ```bash
-   # Update SSL certificates (automatic via cron)
-   sudo certbot renew --dry-run
+   # Update Docker images regularly
+   ./upload-and-deploy.sh
    
    # Update system packages
    sudo apt update && sudo apt upgrade
    ```
 
-3. **Nginx Security Headers**
-   - The configuration includes security headers for XSS protection
-   - Content Security Policy (CSP) configured
-   - HSTS headers will be added by Certbot
-
 ## Monitoring
 
-### Check App Status
-
+### Health Checks
 ```bash
-# Check nginx status
-sudo systemctl status nginx
+# Check if container is healthy
+curl -f http://16.16.67.171 || echo "App is down"
 
-# Check certificate expiry
-sudo certbot certificates
-
-# Check disk usage
-df -h
-
-# Check memory usage
-free -h
+# Check container status
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
-### Performance Monitoring
-
-```bash
-# Check nginx access logs
-sudo tail -f /var/log/nginx/access.log
-
-# Monitor server resources
-htop
-```
-
-## Updating the App
-
-To update the app with new changes:
-
-```bash
-# Re-run the deployment script
-./upload-and-deploy.sh
-
-# Or manually:
-# 1. Upload new files
-# 2. SSH to server
-# 3. cd /home/ubuntu/polkadot-apps && ./deploy.sh
-```
-
-## Support
-
-If you encounter issues:
-1. Check the troubleshooting section above
-2. Review nginx and application logs
-3. Verify DNS and SSL certificate status
-4. Test RPC endpoint connectivity 
+### Logs
+- **Application logs**: `docker logs roko-explorer-container`
+- **Nginx logs** (if using reverse proxy): `/var/log/nginx/`
+- **System logs**: `journalctl -u docker` 
