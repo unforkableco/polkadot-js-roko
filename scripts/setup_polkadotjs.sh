@@ -141,8 +141,8 @@ if ! verify_installation; then
 fi
 
 # Start nginx
-log "Starting nginx..."
-systemctl enable nginx
+    log "Starting nginx..."
+    systemctl enable nginx
 systemctl restart nginx
 
 # Obtain SSL certificate
@@ -154,16 +154,16 @@ if [ -n "${DOMAIN_NAME}" ]; then
     log "Setting up automatic certificate renewal..."
     systemctl enable certbot.timer
     systemctl start certbot.timer
-fi
-
-# Check health
-log "Checking application health..."
-if ! check_health; then
-    log "ERROR: Health check failed"
-    # Show nginx error log for debugging
-    log "Nginx error log:"
-    cat /var/log/nginx/error.log
-    exit 1
+    fi
+    
+    # Check health
+    log "Checking application health..."
+    if ! check_health; then
+        log "ERROR: Health check failed"
+        # Show nginx error log for debugging
+        log "Nginx error log:"
+        cat /var/log/nginx/error.log
+        exit 1
 fi
 
 log "Setup completed successfully!"

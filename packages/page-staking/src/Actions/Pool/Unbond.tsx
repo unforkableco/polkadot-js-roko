@@ -56,6 +56,7 @@ function Unbond ({ className, controllerId, maxUnbond, onClose, poolId }: Props)
             }
             maxValue={maxUnbond}
             onChange={setAmount}
+            siSymbol='pwROKO'
             withMax
           />
           {bondedBlocks?.gtn(0) && (

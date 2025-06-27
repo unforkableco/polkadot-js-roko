@@ -142,7 +142,7 @@ async function loadOnReady (api: ApiPromise, endpoint: LinkOption | null, fork: 
   const tokenSymbol = properties.tokenSymbol.unwrapOr([formatBalance.getDefaults().unit, ...DEFAULT_AUX]);
   const tokenDecimals = properties.tokenDecimals.unwrapOr([DEFAULT_DECIMALS]);
   const isEthereum = properties.isEthereum.isTrue || ethereumChains.includes(api.runtimeVersion.specName.toString()) || urlIsEthereum;
-  const isDevelopment = (systemChainType.isDevelopment || systemChainType.isLocal || isTestChain(systemChain));
+  const isDevelopment = (systemChainType.isDevelopment || systemChainType.isLocal || isTestChain(systemChain) || systemChain.toLowerCase().includes('pwroko'));
 
   console.log(`chain: ${systemChain} (${systemChainType.toString()}), ${stringify(properties)}`);
 
@@ -174,6 +174,38 @@ async function loadOnReady (api: ApiPromise, endpoint: LinkOption | null, fork: 
     store,
     type: isEthereum ? 'ethereum' : 'ed25519'
   }, injectedAccounts);
+
+  // Load development accounts if in development mode  
+  if (isDevelopment && !isEthereum) {
+    console.log('Development mode detected, setting up ALITH and BALTATHAR test accounts');
+    
+    const ethereumTestAccounts = [
+      { name: 'ALITH', privateKey: '0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133', address: '0xf24FF3a9CF04c71Dbc94D0b566f7A27B94566cac' },
+      { name: 'BALTATHAR', privateKey: '0x8075991ce870b93a8870eca0c0f91913d12f47948ca0fd25b49c6fa7cdbeee8b', address: '0x3Cd0A705a2DC65e5b1E1205896BaA2be8A07c6e0' }
+    ];
+    
+    ethereumTestAccounts.forEach(({ name, privateKey, address }) => {
+      try {
+        // Check if account already exists
+        const existingPairs = keyring.getPairs();
+        const accountExists = existingPairs.some(p => p.address.toLowerCase() === address.toLowerCase());
+        
+        if (!accountExists) {
+          try {
+            console.log(`Creating Ethereum test account ${name}`);
+            keyring.addUri(privateKey, '', { name, isLocal: true }, 'ethereum');
+            console.log(`Added test account ${name} with address ${address}`);
+          } catch (e) {
+            console.error(`Failed to create test account ${name}:`, e);
+          }
+        } else {
+          console.log(`Test account ${name} already exists`);
+        }
+      } catch (e) {
+        console.warn(`Failed to add test account ${name}:`, e);
+      }
+    });
+  }
 
   const defaultSection = Object.keys(api.tx)[0];
   const defaultMethod = Object.keys(api.tx[defaultSection])[0];

@@ -9,7 +9,7 @@ import React, { useMemo, useState } from 'react';
 
 import { InputAddress, InputBalance, Modal, TxButton } from '@polkadot/react-components';
 import { useApi, useCall } from '@polkadot/react-hooks';
-import { BalanceFree } from '@polkadot/react-query';
+import { BalanceFree, FormatBalance } from '@polkadot/react-query';
 import { BN, BN_ZERO } from '@polkadot/util';
 
 import { useTranslation } from '../../translate.js';
@@ -22,11 +22,11 @@ interface Props {
   stashId: string;
 }
 
-function calcBalance (api: ApiPromise, stakingInfo?: DeriveStakingAccount, stashBalance?: DeriveBalancesAll): BN | null {
-  if (stakingInfo?.stakingLedger && stashBalance) {
+function calcBalance (api: ApiPromise, stakingInfo?: DeriveStakingAccount, pwRokoBalance?: BN): BN | null {
+  if (stakingInfo?.stakingLedger && pwRokoBalance) {
     const sumUnlocking = (stakingInfo.unlocking || []).reduce((acc, { value }) => acc.iadd(value), new BN(0));
     const redeemable = stakingInfo.redeemable || BN_ZERO;
-    const available = stashBalance.freeBalance.sub(stakingInfo.stakingLedger.active?.unwrap() || BN_ZERO).sub(sumUnlocking).sub(redeemable);
+    const available = pwRokoBalance.sub(stakingInfo.stakingLedger.active?.unwrap() || BN_ZERO).sub(sumUnlocking).sub(redeemable);
 
     return available.gt(api.consts.balances.existentialDeposit)
       ? available.sub(api.consts.balances.existentialDeposit)
@@ -42,14 +42,15 @@ function BondExtra ({ controllerId, onClose, stakingInfo, stashId }: Props): Rea
   const [amountError, setAmountError] = useState<AmountValidateState | null>(null);
   const [maxAdditional, setMaxAdditional] = useState<BN | undefined>();
   const stashBalance = useCall<DeriveBalancesAll>(api.derive.balances?.all, [stashId]);
+  const pwRokoBalance = useCall<any>(api.query.pwRoko?.balances, [stashId]);
   const currentAmount = useMemo(
     () => stakingInfo?.stakingLedger?.active?.unwrap(),
     [stakingInfo]
   );
 
   const startBalance = useMemo(
-    () => calcBalance(api, stakingInfo, stashBalance),
-    [api, stakingInfo, stashBalance]
+    () => calcBalance(api, stakingInfo, pwRokoBalance),
+    [api, stakingInfo, pwRokoBalance]
   );
 
   return (
@@ -74,12 +75,14 @@ function BondExtra ({ controllerId, onClose, stakingInfo, stashId }: Props): Rea
               isError={!!amountError?.error || !maxAdditional || maxAdditional.isZero()}
               label={t('additional funds to bond')}
               labelExtra={
-                <BalanceFree
-                  label={<span className='label'>{t('balance')}</span>}
-                  params={stashId}
+                <FormatBalance
+                  label={<span className='label'>{t('balance (pwROKO)')}</span>}
+                  formatIndex={1}
+                  value={pwRokoBalance}
                 />
               }
               onChange={setMaxAdditional}
+              siSymbol='pwROKO'
             />
             <ValidateAmount
               controllerId={controllerId}
