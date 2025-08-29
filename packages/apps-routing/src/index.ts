@@ -99,6 +99,7 @@ export default function create (t: TFunction): Routes {
     extrinsics(t),
     rpc(t),
     runtime(t),
+    // timerpc(t), // TimeRPC monitor disabled
     signing(t),
     sudo(t),
     files(t),

@@ -42,6 +42,36 @@ function formatInspect ({ inner = [], name = '', outer = [] }: Inspect, result: 
   return result;
 }
 
+function decodeLeU128HexToDateString (hexOrRaw: string): string | null {
+  try {
+    const clean = hexOrRaw.startsWith('0x') ? hexOrRaw.slice(2) : hexOrRaw.replace(/\s+/g, '');
+    if (!/^[0-9a-fA-F]+$/.test(clean) || clean.length !== 32) return null; // 16 bytes
+    const bytes = clean.match(/../g)!.
+      map((b) => parseInt(b, 16));
+    const beHex = bytes.reverse().
+      map((b) => b.toString(16).padStart(2, '0')).
+      join('');
+    const nanos = BigInt('0x' + beHex);
+    const millis = nanos / 1_000_000n;
+    return new Date(Number(millis)).toLocaleString();
+  } catch {
+    return null;
+  }
+}
+
+function decodeLeU32ToNumber (hexOrRaw: string): number | null {
+  try {
+    const clean = hexOrRaw.startsWith('0x') ? hexOrRaw.slice(2) : hexOrRaw.replace(/\s+/g, '');
+    if (!/^[0-9a-fA-F]+$/.test(clean) || clean.length !== 8) return null; // 4 bytes
+    const bytes = clean.match(/../g)!.
+      map((b) => parseInt(b, 16));
+    const value = (bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
+    return value >>> 0;
+  } catch {
+    return null;
+  }
+}
+
 function DecodedInspect ({ className, hex, inspect, label }: Props): React.ReactElement<Props> | null {
   const { t } = useTranslation();
   const { createLink } = useApi();
@@ -74,12 +104,29 @@ function DecodedInspect ({ className, hex, inspect, label }: Props): React.React
     >
       <table>
         <tbody>
-          {formatted.map(({ name, value }, i) => (
-            <tr key={i}>
-              <td><label>{name}</label></td>
-              <td>{value}</td>
-            </tr>
-          ))}
+          {formatted.map(({ name, value }, i) => {
+            let pretty: string | null = null;
+            if (name.toLowerCase().includes('nanotimestamp') || name.toLowerCase().includes('nano_timestamp')) {
+              pretty = decodeLeU128HexToDateString(value);
+            } else if (name.toLowerCase().includes('timerpckeyid') || name.toLowerCase().includes('timerpc_key_id')) {
+              const n = decodeLeU32ToNumber(value);
+              pretty = n !== null ? String(n) : null;
+            }
+
+            return (
+              <tr key={i}>
+                <td><label>{name}</label></td>
+                <td>
+                  {value}
+                  {pretty && (
+                    <div style={{ opacity: 0.8 }}>
+                      ({pretty})
+                    </div>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
           {link && (
             <tr
               className='isLink'

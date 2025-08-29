@@ -7,7 +7,7 @@ import type { ICompact, INumber } from '@polkadot/types/types';
 
 import React, { useMemo } from 'react';
 
-import { AddressMini, LinkExternal, styled } from '@polkadot/react-components';
+import { AddressMini, LinkExternal, styled, BlockTimeMetadata } from '@polkadot/react-components';
 import { convertWeight } from '@polkadot/react-hooks/useWeight';
 import { CallExpander } from '@polkadot/react-params';
 import { BN, formatNumber } from '@polkadot/util';
@@ -16,6 +16,7 @@ import Event from '../Event.js';
 import { useTranslation } from '../translate.js';
 
 interface Props {
+  blockHash?: string;
   blockNumber?: BlockNumber;
   className?: string;
   events?: KeyedEvent[] | null;
@@ -65,8 +66,9 @@ function filterEvents (index: number, events?: KeyedEvent[] | null, maxBlockWeig
   ];
 }
 
-function ExtrinsicDisplay ({ blockNumber, className = '', events, index, maxBlockWeight, value, withLink }: Props): React.ReactElement<Props> {
+function ExtrinsicDisplay ({ blockHash, blockNumber, className = '', events, index, maxBlockWeight, value, withLink }: Props): React.ReactElement<Props> {
   const { t } = useTranslation();
+  const txHashHex = useMemo(() => value.hash.toHex(), [value]);
 
   const link = useMemo(
     () => withLink
@@ -169,6 +171,16 @@ function ExtrinsicDisplay ({ blockNumber, className = '', events, index, maxBloc
                 data={value.hash.toHex()}
                 type='extrinsic'
               />
+              {blockHash && (
+                <div className='temporal-inline'>
+                  <BlockTimeMetadata
+                    blockHash={blockHash}
+                    blockNumber={blockNumber?.toNumber()}
+                    txHashes={[txHashHex]}
+                    compact
+                  />
+                </div>
+              )}
             </>
           )
           : timestamp

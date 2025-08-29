@@ -30,6 +30,27 @@ import { lightSpecs, relaySpecs } from './light/index.js';
 import { statics } from './statics.js';
 import { decodeUrlTypes } from './urlTypes.js';
 
+// Register Temporal types and signed extension once on the registry
+function registerTemporalTypes (): void {
+  try {
+    // Types if not embedded in the chain metadata
+    statics.registry.register({
+      NanoMoment: 'u128',
+      TimeRpcKeyId: 'u32',
+      TemporalSignature: 'EcdsaSignature',
+      TemporalTransactionExtra: {
+        nanoTimestamp: 'NanoMoment',
+        timerpcSignature: 'TemporalSignature',
+        timerpcKeyId: 'TimeRpcKeyId',
+        temporalProof: 'Bytes'
+      }
+    });
+  } catch (error) {
+    // Non-fatal; continue even if registration throws in some environments
+    console.warn('Temporal SignedExtension registration skipped/failed:', error);
+  }
+}
+
 interface Props {
   children: React.ReactNode;
   apiUrl: string;
@@ -292,6 +313,9 @@ async function createApi (apiUrl: string, signer: ApiSigner, isLocalFork: boolea
   }
 
   try {
+    // Register temporal types before creating ApiPromise
+    registerTemporalTypes();
+
     if (isLight) {
       provider = await getLightProvider(apiUrl.replace('light://', ''));
     } else if (isLocalFork && setupChopsticksSuccess) {
@@ -390,6 +414,71 @@ export function ApiCtxRoot ({ apiUrl, children, isElectron, store: keyringStore 
           loadOnReady(statics.api, apiEndpoint, fork, injectedPromise, keyringStore, types, urlIsEthereum)
             .then(setState)
             .catch(onError);
+
+          // After metadata is loaded, provide the mapping for CheckTemporal without changing order
+          try {
+            const existing = statics.registry.signedExtensions;
+            statics.registry.setSignedExtensions(existing, {
+              CheckTemporal: {
+                extrinsic: {
+                  nanoTimestamp: 'NanoMoment',
+                  timerpcSignature: 'TemporalSignature',
+                  timerpcKeyId: 'TimeRpcKeyId',
+                  temporalProof: 'Bytes'
+                },
+                payload: {}
+              }
+            });
+
+            // Diagnostics: log the current signedExtensions order from chain metadata
+            console.log('Signed extensions (chain order):', statics.registry.signedExtensions);
+
+            // Ensure desired temporal extension order when possible (preserving aliases and extras)
+            const wantOrder = [
+              'CheckNonZeroSender', 'CheckSpecVersion', 'CheckTxVersion', 'CheckGenesis',
+              'CheckEra', 'CheckNonce', 'CheckWeight', 'CheckTemporal', 'ChargeTransactionPayment', 'CheckMetadataHash'
+            ];
+
+            const current = statics.registry.signedExtensions;
+            const included = new Set<string>();
+            const resolveName = (name: string): string | null => {
+              if (current.includes(name)) return name;
+              if (name === 'CheckEra' && current.includes('CheckMortality')) return 'CheckMortality';
+              return current.includes(name) ? name : null;
+            };
+
+            const ordered: string[] = [];
+            wantOrder.forEach((name) => {
+              const resolved = resolveName(name);
+              if (resolved && !included.has(resolved)) {
+                ordered.push(resolved);
+                included.add(resolved);
+              }
+            });
+            // Append any remaining extensions not in wantOrder
+            current.forEach((name) => {
+              if (!included.has(name)) {
+                ordered.push(name);
+                included.add(name);
+              }
+            });
+
+            statics.registry.setSignedExtensions(ordered, {
+              CheckTemporal: {
+                extrinsic: {
+                  nanoTimestamp: 'NanoMoment',
+                  timerpcSignature: 'TemporalSignature',
+                  timerpcKeyId: 'TimeRpcKeyId',
+                  temporalProof: 'Bytes'
+                },
+                payload: {}
+              }
+            });
+
+            console.log('Signed extensions (enforced order):', statics.registry.signedExtensions);
+          } catch (e) {
+            console.warn('Could not set CheckTemporal signed extension mapping:', e);
+          }
         });
 
         if (isLocalFork) {

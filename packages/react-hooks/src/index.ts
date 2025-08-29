@@ -24,6 +24,8 @@ export { useBlockEvents } from './useBlockEvents.js';
 export { useBlockInterval } from './useBlockInterval.js';
 export { useBlocksPerDays } from './useBlocksPerDays.js';
 export { useBlockTime } from './useBlockTime.js';
+export { useBlockTimeMetadata } from './useBlockTimeMetadata.js';
+export { useTemporalPalletCheck } from './useTemporalPalletCheck.js';
 export { useBrokerConfig } from './useBrokerConfig.js';
 export { useBrokerLeases } from './useBrokerLeases.js';
 export { useBrokerReservations } from './useBrokerReservations.js';

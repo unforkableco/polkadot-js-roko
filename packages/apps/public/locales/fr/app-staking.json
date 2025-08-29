@@ -1,9 +1,9 @@
 {
-  "value bonded": "valeur mise en jeu (pwROKO)",
   "additional free funds to bond": "fonds libres supplémentaires à mettre en jeu (pwROKO)",
   "additional funds to bond": "fonds supplémentaires à mettre en jeu (pwROKO)",
   "amount to unbond": "montant à délier (pwROKO)",
-  "unbond amount": "montant à délier (pwROKO)",
+  "balance (pwROKO)": "solde (pwROKO)",
   "rebonded amount": "montant à relier (pwROKO)",
-  "balance (pwROKO)": "solde (pwROKO)"
-} 
+  "unbond amount": "montant à délier (pwROKO)",
+  "value bonded": "valeur mise en jeu (pwROKO)"
+}

@@ -53,6 +53,7 @@
     "@polkadot/app-storage": "^0.150.3-15-x",
     "@polkadot/app-sudo": "^0.150.3-15-x",
     "@polkadot/app-tech-comm": "^0.150.3-15-x",
+    "@polkadot/app-timerpc": "^0.150.3-15-x",
     "@polkadot/app-treasury": "^0.150.3-15-x",
     "@polkadot/app-utilities": "^0.150.3-15-x",
     "@polkadot/app-whitelist": "^0.150.3-15-x",

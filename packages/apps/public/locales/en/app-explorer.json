@@ -10,6 +10,7 @@
   "No justifications available": "No justifications available",
   "No logs available": "No logs available",
   "Node info": "Node info",
+  "This block has been pruned by the node to save storage space. Block details and temporal metadata are not available for pruned blocks. Try accessing a more recent block.": "This block has been pruned by the node to save storage space. Block details and temporal metadata are not available for pruned blocks. Try accessing a more recent block.",
   "Unable to decode the block events. {{error}}": "Unable to decode the block events. {{error}}",
   "Unable to retrieve the specified block details. {{error}}": "Unable to retrieve the specified block details. {{error}}",
   "average": "average",

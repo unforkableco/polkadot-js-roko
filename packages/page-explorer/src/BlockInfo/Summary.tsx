@@ -7,7 +7,7 @@ import type { Balance, DispatchInfo, SignedBlock } from '@polkadot/types/interfa
 
 import React, { useMemo } from 'react';
 
-import { CardSummary, SummaryBox } from '@polkadot/react-components';
+import { BlockTimeMetadata, CardSummary, SummaryBox } from '@polkadot/react-components';
 import { useApi } from '@polkadot/react-hooks';
 import { convertWeight } from '@polkadot/react-hooks/useWeight';
 import { FormatBalance } from '@polkadot/react-query';
@@ -20,6 +20,7 @@ interface Props {
   maxBlockWeight?: BN;
   maxProofSize?: BN;
   signedBlock?: SignedBlock;
+  blockHash?: string;
 }
 
 function extractEventDetails (events?: KeyedEvent[] | null): [BN?, BN?, BN?, BN?] {
@@ -49,7 +50,7 @@ function extractEventDetails (events?: KeyedEvent[] | null): [BN?, BN?, BN?, BN?
     : [];
 }
 
-function Summary ({ events, maxBlockWeight, maxProofSize, signedBlock }: Props): React.ReactElement<Props> | null {
+function Summary ({ blockHash, events, maxBlockWeight, maxProofSize, signedBlock }: Props): React.ReactElement<Props> | null {
   const { t } = useTranslation();
   const { api } = useApi();
 
@@ -120,6 +121,16 @@ function Summary ({ events, maxBlockWeight, maxProofSize, signedBlock }: Props):
             : <span className='--tmp'>99</span>}
         </CardSummary>
       </section>
+      {blockHash && (
+        <section className='temporal-metadata-section'>
+          <BlockTimeMetadata
+            blockHash={blockHash}
+            blockNumber={signedBlock?.block.header.number.toNumber()}
+            txHashes={signedBlock?.block.extrinsics.map(ext => ext.hash.toHex()) || []}
+            compact
+          />
+        </section>
+      )}
     </SummaryBox>
   );
 }

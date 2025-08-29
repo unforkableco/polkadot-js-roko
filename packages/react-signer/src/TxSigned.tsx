@@ -25,7 +25,7 @@ import { useApi, useLedger, useQueue, useToggle } from '@polkadot/react-hooks';
 import { keyring } from '@polkadot/ui-keyring';
 import { settings } from '@polkadot/ui-settings';
 import { assert, nextTick } from '@polkadot/util';
-import { addressEq } from '@polkadot/util-crypto';
+import { addressEq, blake2AsHex } from '@polkadot/util-crypto';
 
 import { AccountSigner, LedgerSigner, QrSigner } from './signers/index.js';
 import Address from './Address.js';
@@ -103,12 +103,91 @@ async function fakeSignForChopsticks (api: ApiPromise, tx: SubmittableExtrinsic<
   tx.signature.set(mockSignature);
 }
 
+async function attestTimeAndAugmentOptions (api: ApiPromise, tx: SubmittableExtrinsic<'promise'>, signerAddress: string, options: Partial<SignerOptions>): Promise<Partial<SignerOptions>> {
+  try {
+    // Compute call hash exactly as docs: blake2_256(SCALE(RuntimeCall))
+    const callHash = blake2AsHex(tx.method.toU8a(), 256);
+
+    // Gather chain context
+    const header = await api.rpc.chain.getHeader();
+    const bestBlockNumber = header.number.toNumber();
+    const bestBlockHash = (await api.rpc.chain.getBlockHash()).toHex();
+    const specVersion = api.runtimeVersion.specVersion.toNumber();
+    const txVersion = api.runtimeVersion.transactionVersion.toNumber();
+
+    const chainContext = { specVersion, transactionVersion: txVersion, bestBlockNumber, bestBlockHash };
+
+    // Bind attestation to the runtime's AccountId encoding.
+    // On Ethereum-style chains this is H160 (20 bytes).
+    const accountIdHex = api.createType('AccountId', signerAddress).toHex();
+    if (accountIdHex.length !== 42 && accountIdHex.length !== 66) {
+      console.warn('[Temporal] Unexpected AccountId length for attestation:', accountIdHex);
+    }
+
+    // Determine TimeRPC base URL
+    const envUrl = (typeof (window as any).__TIMERPC_URL__ === 'string' && (window as any).__TIMERPC_URL__)
+      || (process.env.TIMERPC_URL || '');
+    const baseUrl = envUrl.length > 0
+      ? envUrl
+      : `${window.location.protocol}//${window.location.hostname}:8080`;
+
+    console.info('[Temporal] Prepared attestation request', {
+      accountIdHex,
+      callHash,
+      chainContext
+    });
+
+    // Optional: check temporal watermark if RPC is available
+    try {
+      const watermark = (api.rpc as any).temporal?.getTemporalWatermark
+        ? await (api.rpc as any).temporal.getTemporalWatermark()
+        : null;
+      if (watermark) {
+        console.info('[Temporal] Node watermark (raw):', watermark.toString());
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const response = await fetch(`${baseUrl}/attest-time`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ account_id: accountIdHex, call_hash: callHash, chainContext })
+    });
+
+    if (!response.ok) {
+      throw new Error(`TimeRPC attestation failed with status ${response.status}`);
+    }
+
+    const att = await response.json();
+
+    console.info('[Temporal] Attestation received', att);
+
+    // Diagnostics download removed per requirements
+
+    // Extend signer options with temporal SignedExtra fields
+    return {
+      ...options,
+      nanoTimestamp: att.nano_timestamp,
+      timerpcSignature: att.timerpc_signature,
+      timerpcKeyId: att.timerpc_key_id,
+      temporalProof: att.temporal_proof || '0x'
+    } as Partial<SignerOptions>;
+  } catch (error) {
+    console.error('[Temporal] Attestation/signing preparation failed:', error);
+    // Propagate error to upstream handlers; do not silently downgrade to non-temporal
+    throw error;
+  }
+}
+
 async function signAndSend (queueSetTxStatus: QueueTxMessageSetStatus, currentItem: QueueTx, tx: SubmittableExtrinsic<'promise'>, pairOrAddress: KeyringPair | string, options: Partial<SignerOptions>, api: ApiPromise, isMockSign: boolean): Promise<void> {
   currentItem.txStartCb && currentItem.txStartCb();
 
   try {
     if (!isMockSign) {
-      await tx.signAsync(pairOrAddress, options);
+      const signerAddress = typeof pairOrAddress === 'string' ? pairOrAddress : (pairOrAddress.address || '');
+      const temporalOptions = await attestTimeAndAugmentOptions(api, tx, signerAddress, options);
+      await tx.signAsync(pairOrAddress, temporalOptions);
     } else {
       await fakeSignForChopsticks(api, tx, pairOrAddress as string);
     }
@@ -133,7 +212,9 @@ async function signAsync (queueSetTxStatus: QueueTxMessageSetStatus, { id, txFai
 
   try {
     if (!isMockSign) {
-      await tx.signAsync(pairOrAddress, options);
+      const signerAddress = typeof pairOrAddress === 'string' ? pairOrAddress : (pairOrAddress.address || '');
+      const temporalOptions = await attestTimeAndAugmentOptions(api, tx, signerAddress, options);
+      await tx.signAsync(pairOrAddress, temporalOptions);
     } else {
       await fakeSignForChopsticks(api, tx, pairOrAddress as string);
     }
@@ -371,7 +452,8 @@ function TxSigned ({ className, currentItem, isQueueSubmit, queueSize, requestAd
           extractParams(api, senderInfo.signAddress, { ...signedOptions, tip, withSignedTransaction: true }, getLedger, setQrState)
         ]);
 
-        setSignedTx(await signAsync(queueSetTxStatus, currentItem, tx, pairOrAddress, options, api, isMockSign));
+        const signed = await signAsync(queueSetTxStatus, currentItem, tx, pairOrAddress, options, api, isMockSign);
+        setSignedTx(signed);
       }
     },
     [api, getLedger, signedOptions, tip]

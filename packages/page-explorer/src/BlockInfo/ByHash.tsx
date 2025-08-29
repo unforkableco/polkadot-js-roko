@@ -9,7 +9,7 @@ import type { EventRecord, RuntimeVersionPartial, SignedBlock } from '@polkadot/
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { AddressSmall, Columar, LinkExternal, MarkError, Table } from '@polkadot/react-components';
+import { AddressSmall, BlockTimeMetadata, Columar, LinkExternal, MarkError, Table } from '@polkadot/react-components';
 import { useApi, useIsMountedRef } from '@polkadot/react-hooks';
 import { convertWeight } from '@polkadot/react-hooks/useWeight';
 import { formatNumber, isBn } from '@polkadot/util';
@@ -98,7 +98,30 @@ function BlockByHash ({ className = '', error, value }: Props): React.ReactEleme
         mountedRef.current && setState(transformResult(result));
       })
       .catch((error: Error): void => {
-        mountedRef.current && setBlkError(error);
+        // Handle specific errors for pruned state
+        if (error.message?.includes('State already discarded') || 
+            error.message?.includes('Api called for an unknown Block') ||
+            (error as any).code === 4003) {
+          console.warn(`Block state discarded for ${value} - limited information available`);
+          // Try to get just the header without state data
+          api.derive.chain.getHeader(value)
+            .then((header) => {
+              if (mountedRef.current && header) {
+                setState({
+                  events: null,
+                  getBlock: undefined,
+                  getHeader: header,
+                  runtimeVersion: undefined
+                });
+              }
+            })
+            .catch(() => {
+              // If even header fails, show the error
+              mountedRef.current && setBlkError(error);
+            });
+        } else {
+          mountedRef.current && setBlkError(error);
+        }
       });
   }, [api, mountedRef, value]);
 
@@ -123,6 +146,7 @@ function BlockByHash ({ className = '', error, value }: Props): React.ReactEleme
   return (
     <div className={className}>
       <Summary
+        blockHash={value || undefined}
         events={events}
         maxBlockWeight={(maxBlockWeight as V2Weight).refTime.toBn()}
         maxProofSize={isBn(maxBlockWeight.proofSize) ? maxBlockWeight.proofSize : (maxBlockWeight as V2Weight).proofSize.toBn()}
@@ -133,7 +157,13 @@ function BlockByHash ({ className = '', error, value }: Props): React.ReactEleme
           ? (
             <tr>
               <td colSpan={6}>
-                <MarkError content={t('Unable to retrieve the specified block details. {{error}}', { replace: { error: blkError.message } }) } />
+                {blkError.message?.includes('State already discarded') || 
+                 blkError.message?.includes('Api called for an unknown Block') ||
+                 (blkError as any).code === 4003 ? (
+                  <MarkError content={t('This block has been pruned by the node to save storage space. Block details and temporal metadata are not available for pruned blocks. Try accessing a more recent block.')} />
+                ) : (
+                  <MarkError content={t('Unable to retrieve the specified block details. {{error}}', { replace: { error: blkError.message } }) } />
+                )}
               </td>
             </tr>
           )
@@ -167,6 +197,7 @@ function BlockByHash ({ className = '', error, value }: Props): React.ReactEleme
       {getBlock && getHeader && (
         <>
           <Extrinsics
+            blockHash={value || undefined}
             blockNumber={blockNumber}
             events={events}
             maxBlockWeight={(maxBlockWeight as V2Weight).refTime.toBn()}
@@ -187,6 +218,17 @@ function BlockByHash ({ className = '', error, value }: Props): React.ReactEleme
               <Justifications value={getBlock.justifications} />
             </Columar.Column>
           </Columar>
+          
+          {value && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <h3>Temporal Metadata</h3>
+              <BlockTimeMetadata
+                blockHash={value}
+                blockNumber={blockNumber?.toNumber()}
+                txHashes={getBlock?.block.extrinsics.map(ext => ext.hash.toHex()) || []}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

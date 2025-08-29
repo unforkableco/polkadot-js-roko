@@ -1,0 +1,33 @@
+{
+  "bugs": "https://github.com/polkadot-js/apps/issues",
+  "engines": {
+    "node": ">=18"
+  },
+  "homepage": "https://github.com/polkadot-js/apps/tree/master/packages/page-timerpc#readme",
+  "license": "Apache-2.0",
+  "name": "@polkadot/app-timerpc",
+  "private": true,
+  "repository": {
+    "directory": "packages/page-timerpc",
+    "type": "git",
+    "url": "https://github.com/polkadot-js/apps.git"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "version": "0.150.3-15-x",
+  "dependencies": {
+    "@polkadot/react-components": "^0.150.3-15-x",
+    "@polkadot/react-hooks": "^0.150.3-15-x",
+    "@polkadot/util": "^13.4.3"
+  },
+  "devDependencies": {
+    "@polkadot/test-support": "0.150.3-15-x"
+  },
+  "peerDependencies": {
+    "@polkadot/api": "*",
+    "@polkadot/api-base": "*",
+    "@polkadot/types": "*",
+    "react": "*",
+    "react-router-dom": "*"
+  }
+} 

@@ -13,6 +13,7 @@ import { useTranslation } from '../translate.js';
 import ExtrinsicDisplay from './Extrinsic.js';
 
 interface Props {
+  blockHash?: string;
   blockNumber?: BlockNumber;
   className?: string;
   events?: KeyedEvent[] | null;
@@ -22,7 +23,7 @@ interface Props {
   withLink: boolean;
 }
 
-function Extrinsics ({ blockNumber, className = '', events, label, maxBlockWeight, value, withLink }: Props): React.ReactElement<Props> {
+function Extrinsics ({ blockHash, blockNumber, className = '', events, label, maxBlockWeight, value, withLink }: Props): React.ReactElement<Props> {
   const { t } = useTranslation();
 
   const header = useMemo<[React.ReactNode?, string?, number?][]>(
@@ -44,6 +45,7 @@ function Extrinsics ({ blockNumber, className = '', events, label, maxBlockWeigh
     >
       {value?.map((extrinsic, index): React.ReactNode =>
         <ExtrinsicDisplay
+          blockHash={blockHash}
           blockNumber={blockNumber}
           events={events}
           index={index}
